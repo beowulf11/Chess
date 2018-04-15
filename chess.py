@@ -153,9 +153,6 @@ class Chess:
                             temp.append(el)
         return temp
 
-    def test(self):
-        print("Github Hurayy")
-
     def ai_move(self):
         moves = self.generate_moves(self.player_map, 'B')
         for move in moves:
@@ -255,6 +252,9 @@ class Chess:
         figure = check_pawn_promotion_ai(self.player_map)
         if figure:
             self.pawn_promotion(self.player_map, figure, choose_random_promotion())
+
+    def game_board_update(self):
+        pass
 
     def pawn_promotion(self, pole, figure, new_figure_type):
         '''

@@ -512,8 +512,7 @@ class Pawn(Figure):
         # Pawn je Black
         if self.color == 'B':
             for y, x in ((1, -1), (1, 0), (1, 1)):
-                if self.y + y in range(8) and self.x + x in range(8):
-                    moves.append((self.y + y, self.x + x))
+                moves.append((self.y + y, self.x + x))
             if not self.moved: # Ked sa Pawn este nepohol ma dodatocnu moznost skocit o 2 policka dopredi
                 moves.append((self.y + 2, self.x))
 

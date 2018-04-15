@@ -305,7 +305,6 @@ class Board(tkinter.Frame):
         #             self.finished_game('Cierny')
         #         elif end_game == 'remiza':
         #             self.finished_game('Remiza')
-
             self.next_turn = True  # Zacina dalsie kolo
 
     def finished_game(self, looser):
@@ -341,13 +340,6 @@ class Board(tkinter.Frame):
         '''
         self.next_turn = False  # Zacina animacia, zakaz dalsieho pohybu az do skoncenia animacie
         self.turn_color = abs(self.turn_color - 1)
-
-        # TOTO vsetko riesim v chess.py
-
-        # pred_poz = (fig.y, fig.x)
-        # fig.update_figure(''.join(loc_click))
-        # self.player_map[int(loc_click[0])][int(loc_click[1])] = fig  # prepise na novu poziciu
-        # self.player_map[int(pred_poz[0])][int(pred_poz[1])] = 0  # vymaz predoslu poziciu
 
     def restore_location(self, fig):
         self.next_turn = False
@@ -459,33 +451,6 @@ class Board(tkinter.Frame):
                             if poz in s_poz:
                                 return True
         return False
-
-    def pawn_for_promotion(self):
-        '''
-            Prezre sachovnicu ci sa na nej nachadza nejaky Pawn ktory moze byt pozdvhnuti na inu figurku
-        '''
-        for i in self.player_map:
-            for k in i:
-                if k and k.name[:2] == 'WP' and k.poz[0] == '0':
-                    self.choosing_figure(k.name[0], k)
-                    return True
-                elif k and k.name[:2] == 'BP' and k.poz[0] == '7':
-                    self.choosing_figure(k.name[0], k)
-                    return True
-        return False
-
-    def en_passant_elimination(self):
-        '''
-            Skontroluje ci sa Pawn pohol na policko Pawn stym ze ho vyhodi kvoli pravidlu en passant
-        '''
-        for i in self.player_map:
-            for k in i:
-                if k and k.name == 'WPT' and self.player_map[int(k.poz[0]) + 1][int(k.poz[1])] and \
-                        self.player_map[int(k.poz[0]) + 1][int(k.poz[1])].name[:2] == 'BP':
-                    self.player_map[int(k.poz[0])][int(k.poz[1])] = 0
-                elif k and k.name == 'BPT' and self.player_map[int(k.poz[0]) - 1][int(k.poz[1])] and \
-                        self.player_map[int(k.poz[0]) - 1][int(k.poz[1])].name[:2] == 'WP':
-                    self.player_map[int(k.poz[0])][int(k.poz[1])] = 0
 
     def choosing_figure(self, color, pawn):
         '''
