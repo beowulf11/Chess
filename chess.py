@@ -153,6 +153,9 @@ class Chess:
                             temp.append(el)
         return temp
 
+    def test(self):
+        print("Github Hurayy")
+
     def ai_move(self):
         moves = self.generate_moves(self.player_map, 'B')
         for move in moves:
