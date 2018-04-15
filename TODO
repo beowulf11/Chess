@@ -1,0 +1,22 @@
+Treba rozdelit hur na 3 classy
+1: figure
+2: chess
+3: board
+
+!!! Treba okomentovat vsetko najprv a pri najlepsom prepisat premenne a logiku a rozdelit komplikovane funkcie na mensie
+
+pricom
+
+1 - budu vsetky figurky ktore budu mat o sebe vsetky parametre pre ne podstatne
+    (poz, farbu, druh, svoj obrazok, poz na obrazovke) # posledne dve treba dat prec a dat ich ako nepotrebne parametre
+    a funkcie ktore su pre ne dolezite
+    (zistit mozne pohyby, zistit vsetky pohyby, zistit moznost vyhodit krala, ...)
+
+2 - Samotna hra tj. pravidla, mozne pohyby, situacia v hre.
+    Class musi byt schopna s obdrzanimi figurkami povedat aky je stav hry ci niekto vyhrava alebo prehrava, atd
+
+3 - Grafike rozhranie pre hru
+    Bude obsahovat Tkinter komponent, animacie na pohyb, zaznamenavanie pohybu, realizovanie pohybu prehry atd.
+
+
+king_in_danger - Treba sa zbavit tejto funkcie a dat ju do class chess, Figurky maju byt samostatne, max s poslom robit
