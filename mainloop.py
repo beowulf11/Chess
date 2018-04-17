@@ -52,7 +52,7 @@ class ProgramMain(tkinter.Tk):
                 frame.random_positions_chaos()
             else:
                 frame.set_up_game()
-                frame.normal_positions()
+                # frame.normal_positions()
             frame.place(width=700, height=700)
         elif cont == 'Play':
             frame = self.frames[cont]

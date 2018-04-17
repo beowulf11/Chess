@@ -74,6 +74,8 @@ class Chess:
                            20, 20, 0, 0, 0, 0, 20, 20,
                            20, 30, 10, 0, 0, 10, 30, 20]
 
+        self.old = []
+
         self.king_w_elimation_positions = []
         self.king_b_elimation_positions = []
 
@@ -92,26 +94,26 @@ class Chess:
     def testing(self):
         '''ONLY FOR TESTING'''
         skin = '1'
-        self.kings = [King(0, 4, 'B', 'T', skin), King(7, 4, 'W', 'T', skin)]
+        self.kings = [King(0, 4, 'B', skin, 'T'), King(7, 4, 'W', skin, 'T')]
         self.player_map = [
-            [Rook(0, 0, 'B', 'T', skin), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
+            [Rook(0, 0, 'B', skin, 'T'), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
              self.kings[0],
-             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', 'T', skin)],
-            [Pawn(1, 0, 'B', 'F', skin), Pawn(1, 1, 'B', 'F', skin), Pawn(1, 2, 'B', 'F', skin),
-             Pawn(1, 3, 'B', 'F', skin),
-             Pawn(1, 4, 'B', 'F', skin), Pawn(1, 5, 'B', 'F', skin), Pawn(1, 6, 'B', 'F', skin),
-             Pawn(1, 7, 'B', 'F', skin)],
+             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, 'T')],
+            [Pawn(1, 0, 'B', skin, False), Pawn(1, 1, 'B', skin, False), Pawn(1, 2, 'B', skin, False),
+             Pawn(1, 3, 'B', skin, False),
+             Pawn(1, 4, 'B', skin, False), Pawn(1, 5, 'B', skin, False), Pawn(1, 6, 'B', skin, False),
+             Pawn(1, 7, 'B', skin, False)],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
-            [Pawn(6, 0, 'W', 'F', skin), Pawn(6, 1, 'W', 'F', skin), Pawn(6, 2, 'W', 'F', skin),
-             Pawn(6, 3, 'W', 'F', skin),
-             Pawn(6, 4, 'W', 'F', skin), Pawn(6, 5, 'W', 'F', skin), Pawn(6, 6, 'W', 'F', skin),
-             Pawn(6, 7, 'W', 'F', skin)],
-            [Rook(7, 0, 'W', 'T', skin), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
+            [Pawn(6, 0, 'W', skin, False), Pawn(6, 1, 'W', skin, False), Pawn(6, 2, 'W', skin, False),
+             Pawn(6, 3, 'W', skin, False),
+             Pawn(6, 4, 'W', skin, False), Pawn(6, 5, 'W', skin, False), Pawn(6, 6, 'W', skin, False),
+             Pawn(6, 7, 'W', skin, False)],
+            [Rook(7, 0, 'W', skin, 'T'), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
              self.kings[1],
-             Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', 'T', skin)]]
+             Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', skin, 'T')]]
 
     def king_save_moves(self, color, pozs):
         '''
@@ -169,6 +171,8 @@ class Chess:
         :return: None
         """
 
+        past_figure = 0
+        past_figure_type = 0
         y, x, new_pos_y, new_pos_x = move[0], move[1], move[2], move[3]
         figure = pole[y][x]
 
@@ -176,14 +180,16 @@ class Chess:
 
         if figure == Pawn and not pole[new_pos_y][new_pos_x] and abs(x - new_pos_x) == 1 \
                 and abs(y - new_pos_y) == 1:  # Mozny special case ked hybeme s Pawn (En Passant)
-            pole[y][new_pos_x] = 0
+            past_figure, pole[y][new_pos_x] = pole[y][new_pos_x], 0
+            if past_figure:
+                past_figure.image = None
             pole[new_pos_y][new_pos_x] = figure
             pole[y][x] = 0
 
         elif figure == King and abs(x - new_pos_x) == 2:
             pole[new_pos_y][new_pos_x], pole[y][x] = pole[y][x], 0
             if x > new_pos_x:
-                pole[y][x - 1], pole[y][0] = pole[y][0], 0
+                past_figure, pole[y][x - 1], pole[y][0] = pole[y][0], pole[y][0], 0
                 pole[y][x - 1].update_figure((y, x - 1))
 
                 figure_movement.append((y, 0, y, x - 1))
@@ -193,11 +199,22 @@ class Chess:
 
                 figure_movement.append((y, 7, y, x + 1))
         else:
-            pole[new_pos_y][new_pos_x] = figure
+            past_figure, pole[new_pos_y][new_pos_x] = pole[new_pos_y][new_pos_x], figure
+            if past_figure:
+                past_figure.image = None
+
             pole[y][x] = 0
+
+        if past_figure:
+            past_figure_type = type(past_figure)
+            past_figure = past_figure.get_stats()
 
         figure_movement.append((y, x, new_pos_y, new_pos_x))
         figure.update_figure(move[2:])
+
+        self.old.append((move, past_figure_type, past_figure))
+        print(self.old[-1])
+
         return figure_movement
 
     def king_in_danger(self, pole, pos):
@@ -254,7 +271,21 @@ class Chess:
             self.pawn_promotion(self.player_map, figure, choose_random_promotion())
 
     def game_board_update(self):
+        '''
+
+        :return:
+        '''
+        # TODO: Treba updatnut pawns kazde kolo aby sa zatrhlo En Passant
         pass
+
+    def evaluate(self, pole):
+        score = 0
+        for line in pole:
+            for figure in line:
+                if figure:
+                    score += figure.score
+
+        return score
 
     def pawn_promotion(self, pole, figure, new_figure_type):
         '''

@@ -69,6 +69,7 @@ class Board(tkinter.Frame):
         self.turn_color = 1  # 0-cierny, 1-biely
 
         self.game.testing()
+        self.create_figure_images()
 
     def game_loop(self, pozs):
         '''
@@ -430,7 +431,7 @@ class Board(tkinter.Frame):
         y, x = self.get_pixels_middle_from_location(self.player_map[px][py].poz)
         self.player_map[px][py].x_p, self.player_map[px][py].y_p = x, y
         self.player_map[px][py].image_id = self.canvas.create_image(
-            self.get_pixels_middle_from_location(self.player_map[px][py].get_loc_int()),
+            self.get_pixels_middle_from_location(self.player_map[px][py].y, self.player_map[px][py].x),
             image=self.player_map[px][py].image)
 
     def can_be_moved_to(self, current_player, s_poz):
@@ -699,11 +700,11 @@ class Board(tkinter.Frame):
                 self.dragging_enabled = True
             else:
                 self.dragging_enabled = False
-        self.kings = [King(0, 4, 'B', 'T', skin), King(7, 4, 'W', 'T', skin)]
+        self.kings = [King(0, 4, 'B', skin, 'T'), King(7, 4, 'W', skin, 'T')]
         self.player_map = [
-            [Rook(0, 0, 'B', 'T', skin), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
+            [Rook(0, 0, 'B', skin, 'T'), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
              self.kings[0],
-             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', 'T', skin)],
+             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, 'T')],
             [Pawn(1, 0, 'B', 'F', skin), Pawn(1, 1, 'B', 'F', skin), Pawn(1, 2, 'B', 'F', skin),
              Pawn(1, 3, 'B', 'F', skin),
              Pawn(1, 4, 'B', 'F', skin), Pawn(1, 5, 'B', 'F', skin), Pawn(1, 6, 'B', 'F', skin),
@@ -728,7 +729,7 @@ class Board(tkinter.Frame):
         '''
         for i in range(8):
             for j in range(8):
-                if self.player_map[i][j]:
+                if self.game.player_map[i][j]:
                     y, x = self.get_pixels_middle_from_location(self.game.player_map[i][j].y,
                                                                 self.game.player_map[i][j].x)
                     self.game.player_map[i][j].x_p, self.game.player_map[i][j].y_p = x, y

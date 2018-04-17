@@ -4,10 +4,11 @@ import tkinter
 # TODO Naco je poz v str staci nech tam je x a y prepisat
 
 class Figure:
-    def __init__(self, v_poz, h_poz, color):
+    def __init__(self, v_poz, h_poz, color, skin):
         self.enemy = ['W', 'B'].pop(['W', 'B'].index(color) - 1)
         self.name = ''
         self.color = color
+        self.skin = skin
 
         self.x = h_poz
         self.y = v_poz
@@ -16,8 +17,13 @@ class Figure:
         self.y_p = 0  # pixel pozicie na sachovnici
 
         self.image_id = -1
+        self.image = 0
 
         self.score = 0
+
+    def create_skin(self):
+        if self.skin:
+            self.image = tkinter.PhotoImage(file=f'Images/{self.name[1].lower()}{self.color}{self.skin}.png')
 
     def king_in_danger(self, pole):
         for line in pole:
@@ -96,15 +102,6 @@ class Figure:
         pole[self.y][self.x] = curr
         return all_moves
 
-    def get_loc(self):
-        return self.y, self.x
-
-    def get_loc_int(self):
-        """
-        :return: Vrati pole int ktore reprezentuju lokaciu figurky
-        """
-        return self.y, self.x
-
     def update_figure(self, new_poz):
         self.y, self.x = new_poz[0], new_poz[1]
         self.update_shadow_map()
@@ -163,6 +160,9 @@ class Figure:
         pole[self.y][self.x] = current_figure
         return paths
 
+    def get_stats(self):
+        return self.y, self.x, self.color, self.skin
+
     def __eq__(self, other):
         if isinstance(other, str):
             return self.color == other
@@ -181,14 +181,13 @@ class Figure:
 
 class Queen(Figure):
     def __init__(self, v_poz, h_poz, color, skin=''):
-        super().__init__(v_poz, h_poz, color)
+        super().__init__(v_poz, h_poz, color, skin)
 
         self.name = color + 'Q'
 
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.create_skin()
 
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/q{color}{skin}.png')
+        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 90
 
@@ -271,16 +270,17 @@ class Queen(Figure):
 
 
 class Rook(Figure):
-    def __init__(self, v_poz, h_poz, color, sliding='F', skin=''):
-        super().__init__(v_poz, h_poz, color)
+    def __init__(self, v_poz, h_poz, color, skin='', sliding='F'):
+        super().__init__(v_poz, h_poz, color, skin)
 
         # Sliding hovori si sa moze robit King Sliding co zalezi natom ci sa figurka pohla
         self.name = color + 'R' + sliding
 
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.create_skin()
 
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/r{color}{skin}.png')
+        self.sliding = sliding
+
+        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 50
 
@@ -327,20 +327,23 @@ class Rook(Figure):
         :param new_poz: nova pozicia Rook
         """
         super().update_figure(new_poz)
-        if self.name[2] == 'T':
+        if self.sliding == 'T':
             self.name = self.name[:2] + 'F'
+            self.sliding = 'F'
+
+    def get_stats(self):
+        return super().get_stats() + tuple(self.sliding)
 
 
 class Bishop(Figure):
     def __init__(self, v_poz, h_poz, color, skin=''):
-        super().__init__(v_poz, h_poz, color)
+        super().__init__(v_poz, h_poz, color, skin)
 
         self.name = color + 'B'
 
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.create_skin()
 
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/b{color}{skin}.png')
+        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 30
 
@@ -397,14 +400,13 @@ class Bishop(Figure):
 
 class Knight(Figure):
     def __init__(self, v_poz, h_poz, color, skin=''):
-        super().__init__(v_poz, h_poz, color)
+        super().__init__(v_poz, h_poz, color, skin)
 
         self.name = color + 'N'
 
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.create_skin()
 
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/k{color}{skin}.png')
+        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 30
 
@@ -485,19 +487,18 @@ class Knight(Figure):
 
 
 class Pawn(Figure):
-    def __init__(self, v_poz, h_poz, color, moved='T', skin=0):
-        super().__init__(v_poz, h_poz, color)
+    def __init__(self, v_poz, h_poz, color, skin='', moved=True):
+        super().__init__(v_poz, h_poz, color, skin)
 
-        self.name = color + 'P' + 'F'
+        self.name = color + 'P'
 
-        self.moved = False  # Attribut ktory hovori otom ci sa figurka pohla za hru
-        if moved == 'T':
-            self.moved = True
+        self.create_skin()
+
+        self.moved = moved  # Attribut ktory hovori otom ci sa figurka pohla za hru
+
+        self.moved_byt_two = False
 
         self.map_of_moves_shadowed = self.attacking_pos()
-
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/p{color}{skin}.png')
 
         self.score = 10
 
@@ -560,7 +561,7 @@ class Pawn(Figure):
                 all_moves.append(pozs[0])
 
         # pozre vedla Pawn do lava ci sa vedla nech nachadza Pawn ktory sa pohol o 2 policka a moze sa spravi En passant
-        elif not prvok and prvok1 and prvok1.name == self.enemy + 'PT':
+        elif not prvok and prvok1 and prvok1.color == self.enemy and prvok1 == Pawn and prvok1.moved_byt_two:
             all_moves.append(pozs[0])
 
         # druha pozicia, pred Pawn o 1
@@ -584,7 +585,7 @@ class Pawn(Figure):
                 all_moves.append(pozs[2])
 
         # pozre vedla Pawn do prava ci sa vedla nech nachadza Pawn ktory sa pohol o 2 policka a moze sa spravi En passant
-        elif not prvok and prvok1 and prvok1.name == self.enemy + 'PT':
+        elif not prvok and prvok1 and prvok1.color == self.enemy and prvok1 == Pawn and prvok1.moved_byt_two:
             all_moves.append(pozs[2])
 
         danger = self.king_checking_paths(pole)
@@ -681,9 +682,9 @@ class Pawn(Figure):
         :param new_poz: nova pozicia Pawna
         """
 
+        if abs(self.y - new_poz[0]):
+            self.moved_byt_two = True
         self.y, self.x = new_poz[0], new_poz[1]
-        if not self.moved:
-            self.name = self.name[:-1] + 'T'
         self.moved = True
         self.map_of_moves_shadowed = self.attacking_pos()
 
@@ -713,17 +714,18 @@ class Pawn(Figure):
 
 
 class King(Figure):
-    def __init__(self, v_poz, h_poz, color, sliding='F', skin=''):
-        super().__init__(v_poz, h_poz, color)
+    def __init__(self, v_poz, h_poz, color, skin='', sliding='F'):
+        super().__init__(v_poz, h_poz, color, skin)
 
         self.color = color
 
         self.name = color + 'K' + sliding
 
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.create_skin()
 
-        if skin:
-            self.image = tkinter.PhotoImage(file=f'Images/s{color}{skin}.png')
+        self.sliding = sliding
+
+        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 900
 
@@ -806,8 +808,9 @@ class King(Figure):
         :param new_poz: nova pozicia Krala
         """
         super().update_figure(new_poz)
-        if self.name[2] == 'T':
+        if self.sliding == 'T':
             self.name = self.name[:2] + 'F'
+            self.sliding = 'F'
 
     def check_king(self, pole, s_pos):
         '''
@@ -837,3 +840,6 @@ class King(Figure):
 
     def king_elimination_path(self, pole, king_pos):
         return []
+
+    def get_stats(self):
+        return super().get_stats() + tuple(self.sliding)
