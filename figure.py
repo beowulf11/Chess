@@ -693,7 +693,7 @@ class Pawn(Figure):
             Skontroluje ci Pawn moze vyhodit krala
         :param pole: Pole figurok
         :param s_pos: Pozicia Krala
-        :return: 
+        :return:
         """
         for i in self.attacking_pos():
             if i == s_pos:
@@ -763,7 +763,8 @@ class King(Figure):
 
     def allowed_moves(self, pole):
         '''
-            Vrati mozne pohyby krala na zaklade pola + ked sa kral nepohol pozrie sa moze nastat castling
+            Vrati mozne pohyby krala na zaklade pola + ked sa kral nepohol
+            pozrie sa moze nastat castling
         :param pole: pole figurok
         :return: Pole vsetkych moznych pohybov Krala z ohladom na ostatne figurky
         '''

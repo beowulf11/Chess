@@ -3,18 +3,20 @@ from random import choice
 
 '''
 TODO:
- - Zmenit system ako sa figurky volaju a ako sa naraba z ich poziciami 
+ - Zmenit system ako sa figurky volaju a ako sa naraba z ich poziciami
  - End Game Checking e.i. Sachmat, Remiza, a mozno aj Sach nvm ?
  - Preusporiadaj metody v Chess
  - Treba prepisat vo figurkach check_king a king_checking_path aby vracali tuple int (self.y, self.x) !!!
- 
- - Implement BitBoard ? 
+
+ - Pawn raz skocil mimo pola pre AI ale v strede boardu
+
+ - Implement BitBoard ?
 
 REMAINDERS:
  - Nezabudni Pawn promotion riesit v tejto classe lebo ak sa AI dostane
    do take pozicie tak tam zostane len Pawn stat navzdy
  - Plus v board.py treba priradit este obrazok novej figurky po Pawn promotion
- 
+
 '''
 
 
@@ -81,6 +83,8 @@ class Chess:
 
         self.pawn_en_pasant = 0
 
+        self.moved_byt_two_figure = 0
+
         self.end_game_message = 0
 
         self.selected_figure = 0
@@ -115,24 +119,6 @@ class Chess:
              self.kings[1],
              Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', skin, 'T')]]
 
-    def king_save_moves(self, color, pozs):
-        '''
-            Funkcia prejde cez pohyby v `pozs` a vrati tie ktore zachrania krala
-        :param color: farba hraca ktory chce zachranit krala
-        :param pozs: Pole pozicii na ktore sa figurka moze pohnut
-        :return: pozicie ktore zacharania krala
-        '''
-
-        if color:
-            king_s = self.king_w_elimation_positions
-        else:
-            king_s = self.king_b_elimation_positions
-        save_pos = []
-        for poz in pozs:
-            if poz in king_s:
-                save_pos.append(poz)
-        return save_pos
-
     def get_king_elimination_positions(self, color):
         '''
             Vrati pozicie figurok ktore mozu vyhodit krala farby color
@@ -157,10 +143,10 @@ class Chess:
 
     def ai_move(self):
         moves = self.generate_moves(self.player_map, 'B')
-        for move in moves:
-            poz = move[2:]
-            if self.player_map[poz[0]][poz[1]] and self.player_map[poz[0]][poz[1]].color == 'W':
-                return move
+        # for move in moves:
+        #     poz = move[2:]
+        #     if self.player_map[poz[0]][poz[1]] and self.player_map[poz[0]][poz[1]].color == 'W':
+        #         return move
         return choice(moves)
 
     def move_figure(self, pole, move):
@@ -226,35 +212,29 @@ class Chess:
         '''
 
         king = pole[pos[0]][pos[1]]
-        if king.color == 'W':
-            enemy = 'B'
-        else:
-            enemy = 'W'
 
         for line in pole:
             for figure in line:
-                if figure and figure.color == enemy:
+                if figure and figure.color == king.enemy:
                     if figure.check_king(pole, (king.y, king.x)):
                         return True
 
         return False
 
-    def king_elimination_paths(self, pole, pos):
+    def king_elimination_paths(self, king):
         '''
             Vrati cesty ktore vyhodia krala
         :param pole: hracie pole
-        :param pos: pozicia krala ktory ma byt skontrolovany
+        :param pos: kral
         :return: cesty
         '''
 
         paths = []
 
-        king = pole[pos[0]][pos[1]]
-
-        for line in pole:
+        for line in self.player_map:
             for figure in line:
                 if figure and figure.color == king.enemy:
-                    path = figure.check_king(pole, (king.y, king.x))
+                    path = figure.king_elimination_path(self.player_map, (king.y, king.x))
                     if path:
                         paths.append(path)
 
@@ -270,6 +250,13 @@ class Chess:
         if figure:
             self.pawn_promotion(self.player_map, figure, choose_random_promotion())
 
+        self.en_passant_update()
+
+        if not self.can_move_a_figure("W") or not self.can_move_a_figure("B"):
+            return "stailmate"
+
+        self.update_king_elimination_positions()
+
     def game_board_update(self):
         '''
 
@@ -277,6 +264,16 @@ class Chess:
         '''
         # TODO: Treba updatnut pawns kazde kolo aby sa zatrhlo En Passant
         pass
+
+    def en_passant_update(self):
+        if self.moved_byt_two_figure:
+            self.moved_byt_two_figure.moved_byt_two = False
+
+        for line in self.player_map:
+            for figure in line:
+                if figure == Pawn and figure.moved_byt_two:
+                    self.moved_byt_two_figure = figure
+                    break
 
     def evaluate(self, pole):
         score = 0
@@ -301,7 +298,9 @@ class Chess:
 
     def generate_moves(self, pole, color='W', figure_pos=None, figure=None):
         '''
-            Vrati vygenerovane pohyby, bud pre `color` alebo danu figurku na `figure_pos`
+            Vrati vygenerovane pohyby, bud pre `color` alebo danu figurku na
+            `figure_pos`, ak je figurkyn kral v nebezpeci tak vrati iba take
+            pohyby ktore zacharania krala
         :param pole: hracie pole
         :param color: farba pre ktoru sa vygeneruju pohyby
         :param figure_pos: pozicia figurky pre ktoru sa vygeneruju pohyby
@@ -312,7 +311,7 @@ class Chess:
         if figure_pos is not None or figure is not None:
             if figure_pos is not None:
                 figure = pole[figure_pos[0]][figure_pos[1]]
-            return [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
+            return self.filter_king_save_moves([(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
 
         moves = []
         for line in pole:
@@ -321,7 +320,51 @@ class Chess:
                     for move in figure.allowed_moves(self.player_map):
                         moves.append((figure.y, figure.x, *move))
 
+        return self.filter_king_save_moves(moves)
+
+    def filter_king_save_moves(self, moves):
+        '''
+            Funkcia prejde cez pohyby v `moves` a vrati tie ktore zachrania
+            krala ak je v nebezpeci
+        :param moves: Pole pozicii na ktore sa figurka/y moze pohnut
+        :return: pozicie ktore zacharania krala
+        '''
+
+        if not moves:
+            print(moves, repr(moves), type(moves))
+            return []
+
+        figure = self.player_map[moves[0][0]][moves[0][1]]
+
+        if figure == King:
+            return moves
+
+        if figure.color == 'W':
+            king_save = self.king_w_elimation_positions
+        else:
+            king_save = self.king_b_elimation_positions
+
+        if king_save:
+            if len(king_save) > 1:
+                return []
+            moves = list(filter(lambda m:(m[2], m[3]) in king_save[0],moves))
         return moves
+
+    def update_king_elimination_positions(self):
+        w_k, b_k = 0, 0
+
+        for line in self.player_map:
+            for figure in line:
+                if figure == King:
+                    if figure.color == 'W':
+                        w_k = figure
+                    else:
+                        b_k = figure
+                    if w_k and b_k:
+                        break
+
+        self.king_b_elimation_positions = self.king_elimination_paths(b_k)
+        self.king_w_elimation_positions = self.king_elimination_paths(w_k)
 
     def can_move_a_figure(self, color):
         '''
@@ -361,8 +404,7 @@ class Chess:
 
 
 def choose_random_promotion():
-    figures = (Rook, Queen, Knight, Bishop)
-    return random.choice(figures)
+    return random.choice((Rook, Queen, Knight, Bishop))
 
 
 def check_pawn_promotion_ai(pole):
@@ -371,9 +413,9 @@ def check_pawn_promotion_ai(pole):
     :param pole: hracie pole
     :return: Figurka (Pawn) na promotion
     '''
-    for figure in pole[0]:
-        if figure and figure.name[:2] == 'WP':
-            return figure
+    # for figure in pole[0]:
+    #     if figure and figure.name[:2] == 'WP':
+    #         return figure
 
     for figure in pole[7]:
         if figure and figure.name[:2] == 'BP':

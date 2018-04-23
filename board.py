@@ -306,7 +306,6 @@ class Board(tkinter.Frame):
         #             self.finished_game('Cierny')
         #         elif end_game == 'remiza':
         #             self.finished_game('Remiza')
-            self.next_turn = True  # Zacina dalsie kolo
 
     def finished_game(self, looser):
         self.end_game_message = [self.canvas.create_rectangle(100, 300, 610, 400, fill='white'),
@@ -315,6 +314,7 @@ class Board(tkinter.Frame):
         self.after_timer = self.canvas.after(7000, self.swap_frames)
 
     def move_figure_human(self, movement):
+        print(self.selected_figure, movement)
         if movement in self.possible_moves:
             self.figure_move(movement)
             return True
@@ -332,10 +332,12 @@ class Board(tkinter.Frame):
             figure = self.game.player_map[move[2]][move[3]]
             pix_y, pix_x = self.get_pixels_middle_from_location(move[2], move[3])
             self.move_figure_to(figure, pix_x, pix_y)
-        self.figure_move_next_round(movement, movement) # wtf?
         self.selected_figure, self.possible_moves = 0, 0
+        self.turn_color = abs(self.turn_color - 1)
+        self.game.en_passant_update()
+        self.game.end_round_update()
 
-    def figure_move_next_round(self, fig, new_pos):
+    def figure_move_next_round(self):
         '''
             Pripravi hru na dalsie kolo
         '''
@@ -442,7 +444,7 @@ class Board(tkinter.Frame):
         '''
         for i in self.player_map:
             for j in i:
-                if j and j == current_player:
+                if j == current_player:
                     if j.name[1] in 'QBR':
                         for poz in j.allowed_moves(self.player_map):
                             if poz in s_poz:
