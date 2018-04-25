@@ -36,12 +36,6 @@ class Figure:
                         return ohrozenie
                     return False
 
-    def update_shadow_map(self):
-        '''
-            Updatne mapu vsetkych moznych pohybov
-        '''
-        self.map_of_moves_shadowed = self.possible_moves()
-
     def allowed_moves(self, pole):
         '''
             Funkcia pomocou fukncie possible_moves urcite vsetky mozne pohybi a potom prefiltruje a zisti ktore pohyby
@@ -104,13 +98,12 @@ class Figure:
 
     def update_figure(self, new_poz):
         self.y, self.x = new_poz[0], new_poz[1]
-        self.update_shadow_map()
 
     def check_king(self, pole, s_pos):
         '''
             Skontroluje ci Queen, Rook alebo Bishop moze vyhodit krala
         '''
-        for moves in self.map_of_moves_shadowed:
+        for moves in self.possible_moves():
             for move in moves:
                 if move == s_pos:
                     return [(self.y, self.x)]
@@ -119,7 +112,7 @@ class Figure:
         return []
 
     def king_elimination_path(self, pole, king_pos):
-        for moves in self.map_of_moves_shadowed:
+        for moves in self.possible_moves():
             for i, move in enumerate(moves):
                 if move == king_pos:
                     return [(self.y, self.x)] + moves[:i]
@@ -133,7 +126,7 @@ class Figure:
             Vrati naspat cestu ktora vyhodi krala, plati pre Queen, Rook a Bishop
         '''
 
-        for moves in self.map_of_moves_shadowed:  # Prejde cez vsetky mozne polia pohybov danej figurky
+        for moves in self.possible_moves():  # Prejde cez vsetky mozne polia pohybov danej figurky
             for i, tile in enumerate(moves):  # Prejde cez dane pohyby
                 if tile == s_pos:  # Ak sa policko ktore je mozne pre danu figurku rovna Kralovi moze ho vyhodit
                     return [(self.y, self.x)] + moves[:i]
@@ -144,7 +137,7 @@ class Figure:
     def king_checking_paths(self, pole):
         for line in pole:
             for figure in line:
-                if figure and figure.name[:2] == f'{self.color}K':
+                if figure == self.color and figure == King:
                     king = figure
                     break
 
@@ -162,6 +155,9 @@ class Figure:
 
     def get_stats(self):
         return self.y, self.x, self.color, self.skin
+
+    def get_moving_stats(self):
+        return 1
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -186,8 +182,6 @@ class Queen(Figure):
         self.name = color + 'Q'
 
         self.create_skin()
-
-        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 90
 
@@ -270,17 +264,15 @@ class Queen(Figure):
 
 
 class Rook(Figure):
-    def __init__(self, v_poz, h_poz, color, skin='', sliding='F'):
+    def __init__(self, v_poz, h_poz, color, skin='', moved=True):
         super().__init__(v_poz, h_poz, color, skin)
 
         # Sliding hovori si sa moze robit King Sliding co zalezi natom ci sa figurka pohla
-        self.name = color + 'R' + sliding
+        self.name = color + 'R'
 
         self.create_skin()
 
-        self.sliding = sliding
-
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.moved = moved
 
         self.score = 50
 
@@ -327,12 +319,14 @@ class Rook(Figure):
         :param new_poz: nova pozicia Rook
         """
         super().update_figure(new_poz)
-        if self.sliding == 'T':
-            self.name = self.name[:2] + 'F'
-            self.sliding = 'F'
+        if not self.moved:
+            self.moved = True
 
     def get_stats(self):
-        return super().get_stats() + tuple(self.sliding)
+        return super().get_stats() + ((self.moved,))
+
+    def get_moving_stats(self):
+        return self.moved
 
 
 class Bishop(Figure):
@@ -342,8 +336,6 @@ class Bishop(Figure):
         self.name = color + 'B'
 
         self.create_skin()
-
-        self.map_of_moves_shadowed = self.possible_moves()
 
         self.score = 30
 
@@ -406,8 +398,6 @@ class Knight(Figure):
 
         self.create_skin()
 
-        self.map_of_moves_shadowed = self.possible_moves()
-
         self.score = 30
 
     def possible_moves(self):
@@ -468,7 +458,7 @@ class Knight(Figure):
         '''
             Skontroluje ci Knight moze vyhodit krala
         '''
-        for i in self.map_of_moves_shadowed:
+        for i in self.possible_moves():
             if i == s_pos:
                 return [(self.y, self.x)]
         return []
@@ -480,14 +470,14 @@ class Knight(Figure):
         return [(self.y, self.x)]
 
     def king_elimination_path(self, pole, king_pos):
-        for move in self.map_of_moves_shadowed:
+        for move in self.possible_moves():
             if move == king_pos:
                 return [(self.y, self.x)]
         return []
 
 
 class Pawn(Figure):
-    def __init__(self, v_poz, h_poz, color, skin='', moved=True):
+    def __init__(self, v_poz, h_poz, color, skin='', moved=True, moved_byt_two=False):
         super().__init__(v_poz, h_poz, color, skin)
 
         self.name = color + 'P'
@@ -496,9 +486,7 @@ class Pawn(Figure):
 
         self.moved = moved  # Attribut ktory hovori otom ci sa figurka pohla za hru
 
-        self.moved_byt_two = False
-
-        self.map_of_moves_shadowed = self.attacking_pos()
+        self.moved_byt_two = moved_byt_two
 
         self.score = 10
 
@@ -556,6 +544,8 @@ class Pawn(Figure):
             prvok1 = pole[self.y][self.x - 1]
         except:
             prvok = prvok1 = 0
+        if pozs[0][0] not in range(0, 8) or pozs[0][1] not in range(0,8):
+            prvok = prvok1 = 0
         if prvok and prvok != King:  # Ked je policko obsadene figurkou ktora neni Kral
             if prvok == self.enemy:  # Ked sa na policku nachadza nepriatel
                 all_moves.append(pozs[0])
@@ -579,6 +569,8 @@ class Pawn(Figure):
             prvok = pole[pozs[2][0]][pozs[2][1]]
             prvok1 = pole[self.y][self.x + 1]
         except:
+            prvok = prvok1 = 0
+        if pozs[2][0] not in range(0, 8) or pozs[2][1] not in range(0,8):
             prvok = prvok1 = 0
         if prvok and prvok != King:  # Ked je policko obsadene figurkou ktora neni Kral
             if prvok == self.enemy:  # Ked sa na policku nachadza nepriatel
@@ -609,8 +601,6 @@ class Pawn(Figure):
                 if figure and figure.name[:2] == f'{self.color}K':
                     king = figure
                     break
-
-        print(self.king_checking_paths(king, pole))
 
         pozs = self.possible_moves()
         all_moves = []
@@ -682,11 +672,10 @@ class Pawn(Figure):
         :param new_poz: nova pozicia Pawna
         """
 
-        if abs(self.y - new_poz[0]):
+        if abs(self.y - new_poz[0]) == 2:
             self.moved_byt_two = True
         self.y, self.x = new_poz[0], new_poz[1]
         self.moved = True
-        self.map_of_moves_shadowed = self.attacking_pos()
 
     def check_king(self, pole, s_pos):
         """
@@ -712,20 +701,24 @@ class Pawn(Figure):
                 return [(self.y, self.x)]
         return []
 
+    def get_stats(self):
+        return super().get_stats() + ((self.moved, self.moved_byt_two))
+
+    def get_moving_stats(self):
+        return self.moved, self.moved_byt_two
+
 
 class King(Figure):
-    def __init__(self, v_poz, h_poz, color, skin='', sliding='F'):
+    def __init__(self, v_poz, h_poz, color, skin='', moved=True):
         super().__init__(v_poz, h_poz, color, skin)
 
         self.color = color
 
-        self.name = color + 'K' + sliding
+        self.name = color + 'K'
 
         self.create_skin()
 
-        self.sliding = sliding
-
-        self.map_of_moves_shadowed = self.possible_moves()
+        self.moved = moved
 
         self.score = 900
 
@@ -787,18 +780,18 @@ class King(Figure):
 
         # Pozrie sa ci kral moze spravi castling
         castle_moves = []
-        if self.name[-1] == 'T' and self.save_position(pole, (self.y, self.x)):
+        if not self.moved and self.save_position(pole, (self.y, self.x)):
             if (self.y, self.x + 1) in all_moves and self.save_position(pole, (self.y, self.x + 2)) and\
                     not pole[self.y][self.x + 2]:
-                if pole[7][7] and pole[7][7].name == 'WRT' and self.color == 'W':
+                if pole[7][7] == Rook and pole[7][7] == self.color and not pole[7][7].moved:
                     castle_moves.append((self.y, self.x + 2))
-                elif pole[0][7] and pole[0][7].name == 'BRT' and self.color == 'B':
+                elif pole[0][7] == Rook and pole[0][7] == self.color and not pole[0][7].moved:
                     castle_moves.append((self.y, self.x + 2))
             elif (self.y, self.x - 1) in all_moves and self.save_position(pole, (self.y, self.x - 2)) and \
-                    not pole[self.y][self.x - 2]:
-                if pole[7][0] and pole[7][0].name == 'WRT' and self.color == 'W':
+                    not pole[self.y][self.x - 2] and not pole[self.y][self.x - 3]:
+                if pole[7][0] == Rook and pole[7][0] == self.color and not pole[7][0].moved:
                     castle_moves.append((self.y, self.x - 2))
-                elif pole[0][0] and pole[0][0].name == 'BRT' and self.color == 'B':
+                elif pole[0][0] == Rook and pole[0][0] == self.color and not pole[0][0].moved:
                     castle_moves.append((self.y, self.x - 2))
 
         return all_moves + castle_moves
@@ -809,9 +802,8 @@ class King(Figure):
         :param new_poz: nova pozicia Krala
         """
         super().update_figure(new_poz)
-        if self.sliding == 'T':
-            self.name = self.name[:2] + 'F'
-            self.sliding = 'F'
+        if not self.moved:
+            self.moved = True
 
     def check_king(self, pole, s_pos):
         '''
@@ -826,11 +818,18 @@ class King(Figure):
         :param pos:
         :return: True/False
         """
+
+        fig, pole[pos[0]][pos[1]] = pole[pos[0]][pos[1]], 0
+
         for line in pole:
             for figure in line:
                 if figure and figure == self.enemy:
                     if figure.check_king(pole, pos):
+                        pole[pos[0]][pos[1]] = fig
                         return False
+
+        pole[pos[0]][pos[1]] = fig
+
         return True
 
     def king_checking_path(self, pole, s_pos):
@@ -843,4 +842,7 @@ class King(Figure):
         return []
 
     def get_stats(self):
-        return super().get_stats() + tuple(self.sliding)
+        return super().get_stats() + ((self.moved,))
+
+    def get_moving_stats(self):
+        return self.moved

@@ -9,22 +9,47 @@ class Board(tkinter.Frame):
     def __init__(self, parent, controller):
         tkinter.Frame.__init__(self, parent)
         self.controller = controller
+
         self.canvas = tkinter.Canvas(self, width=700, height=700)
         self.canvas.pack()
         self.canvas_width = 700
         self.canvas_height = 700
+
         self.after_timer = 0
+
         self.dragging_enabled = False
         self.canvas.bind('<Escape>', self.esc_menu)
         self.canvas.bind("<Button-1>", self.on_press)
-        self.end_game_message = ''
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<B1-Motion>", self.on_motion)
         self._drag_data = {'x': 0, 'y': 0, 'item': None}
+        self.canvas.bind("<m>", self.testing)
+        self.canvas.bind("<p>", self.ascii)
+        self.canvas.bind("<s>", self.score)
+
+        self.end_game_message = ''
 
         self.ai = True
+        self.ai_move_false = True
 
-        self.game = chess.Chess()
+        self.game = chess.Chess(self.ai)
+
+    def testing(self, args):
+        self.game.undo()
+        self.turn_color = abs(self.turn_color - 1)
+        self.create_figure_images()
+        # TODO : treba ked AI spravi move prejst toutou loopou lebo niektore figurky budu na zlej pozicii
+        for line in self.game.player_map:
+            for figure in line:
+                if figure and (figure.y_p, figure.x_p) != self.get_pixels_middle_from_location(figure.y, figure.x):
+                    figure.y_p, figure.x_p = self.get_pixels_middle_from_location(figure.y, figure.x)
+                    self.canvas.coords(figure.image_id, figure.x_p, figure.y_p)
+
+    def score(self, args):
+        print(self.game.evaluate())
+
+    def ascii(self, args):
+        self.game.ascii()
 
     def swap_frames(self, args=None):
         '''
@@ -78,9 +103,6 @@ class Board(tkinter.Frame):
         '''
         if self.selected_figure:
             self.move_figure_human(self.selected_figure + pozs)
-
-            if self.turn_color == 0 and self.ai:
-                self.figure_move(self.game.ai_move())
 
         elif self.game.player_map[pozs[0]][pozs[1]]:  # figurka neni oznacena tak oznacime nejaku a vykreslime mozne pohyby
             self.select_figure(pozs[0], pozs[1])
@@ -177,7 +199,9 @@ class Board(tkinter.Frame):
                 del (self.select_figure_img)
                 for x in range(4):
                     if args.x in range(150 + 100 * x, 250 + 100 * x):
-                        self.pawn_promotion(self.pawn_to_promote, [Queen, Rook, Bishop, Knight][x])
+                        self.game.pawn_promotion([Queen, Rook, Bishop, Knight][x])
+                        self.pawn_promotion()
+                        self.end_game()
                 self.next_turn = True
 
         # Vyber v menu (Continue, Save, Exit)
@@ -314,12 +338,25 @@ class Board(tkinter.Frame):
         self.after_timer = self.canvas.after(7000, self.swap_frames)
 
     def move_figure_human(self, movement):
-        print(self.selected_figure, movement)
+
+        # print(self.selected_figure, movement, self.possible_moves)
         if movement in self.possible_moves:
             self.figure_move(movement)
             return True
         self.selected_figure, self.possible_moves = 0, 0
         return False
+
+    def end_game(self):
+        answer = self.game.end_round_update()
+        if answer == Pawn:
+            self.choosing_figure(answer)
+            self.ai_move_false = True
+        else:
+            self.turn_color = abs(self.turn_color - 1)
+            if self.turn_color == 0 and self.ai and self.ai_move_false:
+                self.figure_move(self.game.ai_move())
+                self.create_figure_images()
+
 
     def figure_move(self, movement):
         '''
@@ -327,15 +364,13 @@ class Board(tkinter.Frame):
         '''
 
         move = (movement[0], movement[1], movement[2], movement[3])
-        figure_movement = self.game.move_figure(self.game.player_map, move)
+        figure_movement = self.game.move_figure(move)
         for move in figure_movement:
             figure = self.game.player_map[move[2]][move[3]]
             pix_y, pix_x = self.get_pixels_middle_from_location(move[2], move[3])
             self.move_figure_to(figure, pix_x, pix_y)
         self.selected_figure, self.possible_moves = 0, 0
-        self.turn_color = abs(self.turn_color - 1)
-        self.game.en_passant_update()
-        self.game.end_round_update()
+        self.end_game()
 
     def figure_move_next_round(self):
         '''
@@ -417,24 +452,26 @@ class Board(tkinter.Frame):
         elif not self.can_move_a_figure('W') or not self.can_move_a_figure('B'):
             return 'remiza'
 
-    def pawn_promotion(self, pawn_promoted, promoted_to):
+    def pawn_promotion(self):
         '''
             Ked je nejaky panak ktory by mal byt premeneni na Queen tak ho premeni
         :param pawn_promoted:
         :return:
         '''
-        px, py = int(pawn_promoted.poz[0]), int(pawn_promoted.poz[1])
-        self.canvas.delete(pawn_promoted.image_id)
-        self.player_map[px][py] = 0
-        with open('settings.txt', 'r') as file:
-            skin = json.load(file)['figures']
-        self.player_map[px][py] = promoted_to(px, py, pawn_promoted.name[0], skin=skin)
-        pawn_promoted = 0
-        y, x = self.get_pixels_middle_from_location(self.player_map[px][py].poz)
-        self.player_map[px][py].x_p, self.player_map[px][py].y_p = x, y
-        self.player_map[px][py].image_id = self.canvas.create_image(
-            self.get_pixels_middle_from_location(self.player_map[px][py].y, self.player_map[px][py].x),
-            image=self.player_map[px][py].image)
+        # px, py = int(pawn_promoted.poz[0]), int(pawn_promoted.poz[1])
+        self.canvas.delete(self.pawn_to_promote.image_id)
+        # self.player_map[px][py] = 0
+        # with open('settings.txt', 'r') as file:
+        #     skin = json.load(file)['figures']
+        self.create_figure_images()
+        self.pawn_to_promote = None
+        # self.player_map[px][py] = promoted_to(px, py, pawn_promoted.name[0], skin=skin)
+        # pawn_promoted = 0
+        # y, x = self.get_pixels_middle_from_location(self.player_map[px][py].poz)
+        # self.player_map[px][py].x_p, self.player_map[px][py].y_p = x, y
+        # self.player_map[px][py].image_id = self.canvas.create_image(
+        #     self.get_pixels_middle_from_location(self.player_map[px][py].y, self.player_map[px][py].x),
+        #     image=self.player_map[px][py].image)
 
     def can_be_moved_to(self, current_player, s_poz):
         '''
@@ -455,11 +492,12 @@ class Board(tkinter.Frame):
                                 return True
         return False
 
-    def choosing_figure(self, color, pawn):
+    def choosing_figure(self, pawn):
         '''
             Zastavi hru a vytvori obrazovku na ktorej si je schopny hrac vybrat na aku postavicku sa zmeni Pawn
         '''
         self.pawn_to_promote = pawn
+        color = pawn.color
         self.choosing_fig = True
         with open('settings.txt', 'r') as file:
             skin = json.load(file)['figures']
@@ -729,12 +767,18 @@ class Board(tkinter.Frame):
         '''
             Priradi postavickam pixelove hodnoty na ktorych sa nachadzaju, id obrazka a vytvori obrazky figurok
         '''
-        for i in range(8):
-            for j in range(8):
-                if self.game.player_map[i][j]:
-                    y, x = self.get_pixels_middle_from_location(self.game.player_map[i][j].y,
-                                                                self.game.player_map[i][j].x)
-                    self.game.player_map[i][j].x_p, self.game.player_map[i][j].y_p = x, y
-                    self.game.player_map[i][j].image_id = self.canvas.create_image((x, y),
-                                                                                   image=self.game.player_map[i][
-                                                                                       j].image)
+        skin = 0
+        for line in self.game.player_map:
+            for figure in line:
+                if figure and figure.skin:
+                    skin = figure.skin
+
+        for line in self.game.player_map:
+            for figure in line:
+                if figure and figure.image_id == -1:
+                    if not figure.skin:
+                        figure.skin = skin
+                        figure.create_skin()
+                    y, x = self.get_pixels_middle_from_location(figure.y, figure.x)
+                    figure.x_p, figure.y_p = x, y
+                    figure.image_id = self.canvas.create_image((x, y), image=figure.image)
