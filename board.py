@@ -304,7 +304,6 @@ class Board(tkinter.Frame):
         '''
             Animuje pohyb a zaroven na konci animacie dovoli priebehu dalsieho kola
         '''
-
         if fig.x_p != pix_x or fig.y_p != pix_y:
             if fig.x_p != pix_x:
                 if fig.x_p > pix_x:
@@ -319,17 +318,6 @@ class Board(tkinter.Frame):
             self.canvas.coords(fig.image_id, fig.x_p, fig.y_p)
             # dokoncenie animacie povolenie dalsieho pohybu
             self.canvas.after(1, self.move_figure_to, fig, pix_x, pix_y)
-        # elif fig.x_p == pix_x or fig.y_p == pix_y:
-        #     self.en_passant_elimination()
-        #     if not self.end_of_round():
-        #         self.update_king_elimination_positions()
-        #         end_game = self.checking_for_game_end()
-        #         if end_game == 'white_lost':
-        #             self.finished_game('Biely')
-        #         elif end_game == 'black_lost':
-        #             self.finished_game('Cierny')
-        #         elif end_game == 'remiza':
-        #             self.finished_game('Remiza')
 
     def finished_game(self, looser):
         self.end_game_message = [self.canvas.create_rectangle(100, 300, 610, 400, fill='white'),
@@ -351,12 +339,15 @@ class Board(tkinter.Frame):
         if answer == Pawn:
             self.choosing_figure(answer)
             self.ai_move_false = True
+        elif answer in {'black', 'white'}:
+            self.finished_game(answer)
+        elif answer == 'stailmate':
+            self.finished_game(answer)
         else:
             self.turn_color = abs(self.turn_color - 1)
             if self.turn_color == 0 and self.ai and self.ai_move_false:
                 self.figure_move(self.game.ai_move())
                 self.create_figure_images()
-
 
     def figure_move(self, movement):
         '''
@@ -368,6 +359,7 @@ class Board(tkinter.Frame):
         for move in figure_movement:
             figure = self.game.player_map[move[2]][move[3]]
             pix_y, pix_x = self.get_pixels_middle_from_location(move[2], move[3])
+            print("Moving figure...")
             self.move_figure_to(figure, pix_x, pix_y)
         self.selected_figure, self.possible_moves = 0, 0
         self.end_game()
@@ -406,72 +398,45 @@ class Board(tkinter.Frame):
                         return True
         return False
 
-    def end_of_round(self):
-        '''
-            Funkcia sa zavola na konci kola a skontroluje ci su nejaky Pawns ktore sa pohli o 2 policka predosle kolo
-            aby im mohlo zrusit moznost vyhodenia pomocou en passant. A pozrie sa ci sa Pawn nedostal cez celu
-            sachovnicu a hrac si moze zvolit naco sa zmeni
-        '''
-        if self.pawn_en_pasant:
-            self.pawn_en_pasant.name = self.pawn_en_pasant.name[:2] + 'F'
-            self.pawn_en_pasant = 0
-
-        for i in self.player_map:
-            for j in i:
-                if j and j.name[1:] == 'PT':
-                    self.pawn_en_pasant = j
-        return self.pawn_for_promotion()
-
-    def checking_for_game_end(self):
-        '''
-            Funkcia skontroluje stav hry a pokial je Vyhra/Remiza ukonci hru s oznamenim
-        '''
-        if self.king_w_elimation_positions:
-            sav_pos = self.saving_pos(self.king_w_elimation_positions)
-            if sav_pos:
-                self.saving_pos_w_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-                    self.player_map, self.kings[1].poz)
-                self.can_be_moved_to('W', self.saving_pos_w_king)
-                if not self.can_be_moved_to('W', self.saving_pos_w_king) and not self.kings[1].allowed_moves(
-                        self.player_map):
-                    return 'white_lost'
-            elif not self.kings[1].allowed_moves(self.player_map):
-                return 'white_lost'
-
-        elif self.king_b_elimation_positions:
-            sav_pos = self.saving_pos(self.king_b_elimation_positions)
-            if sav_pos:
-                self.saving_pos_b_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-                    self.player_map, self.kings[0].poz)
-                if not self.can_be_moved_to('B', self.saving_pos_b_king) and not self.kings[0].allowed_moves(
-                        self.player_map):
-                    return 'black_lost'
-            elif not self.kings[0].allowed_moves(self.player_map):
-                return 'black_lost'
-
-        elif not self.can_move_a_figure('W') or not self.can_move_a_figure('B'):
-            return 'remiza'
+    # def checking_for_game_end(self):
+    #     '''
+    #         Funkcia skontroluje stav hry a pokial je Vyhra/Remiza ukonci hru s oznamenim
+    #     '''
+    #     if self.king_w_elimation_positions:
+    #         sav_pos = self.saving_pos(self.king_w_elimation_positions)
+    #         if sav_pos:
+    #             self.saving_pos_w_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
+    #                 self.player_map, self.kings[1].poz)
+    #             self.can_be_moved_to('W', self.saving_pos_w_king)
+    #             if not self.can_be_moved_to('W', self.saving_pos_w_king) and not self.kings[1].allowed_moves(
+    #                     self.player_map):
+    #                 return 'white_lost'
+    #         elif not self.kings[1].allowed_moves(self.player_map):
+    #             return 'white_lost'
+    #
+    #     elif self.king_b_elimation_positions:
+    #         sav_pos = self.saving_pos(self.king_b_elimation_positions)
+    #         if sav_pos:
+    #             self.saving_pos_b_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
+    #                 self.player_map, self.kings[0].poz)
+    #             if not self.can_be_moved_to('B', self.saving_pos_b_king) and not self.kings[0].allowed_moves(
+    #                     self.player_map):
+    #                 return 'black_lost'
+    #         elif not self.kings[0].allowed_moves(self.player_map):
+    #             return 'black_lost'
+    #
+    #     elif not self.can_move_a_figure('W') or not self.can_move_a_figure('B'):
+    #         return 'remiza'
 
     def pawn_promotion(self):
         '''
-            Ked je nejaky panak ktory by mal byt premeneni na Queen tak ho premeni
+            Vytvori obrazok a nastavi poziciu pre figurku ktora bola vymenena za Pawn ktory bol promotnuti
         :param pawn_promoted:
         :return:
         '''
-        # px, py = int(pawn_promoted.poz[0]), int(pawn_promoted.poz[1])
         self.canvas.delete(self.pawn_to_promote.image_id)
-        # self.player_map[px][py] = 0
-        # with open('settings.txt', 'r') as file:
-        #     skin = json.load(file)['figures']
         self.create_figure_images()
         self.pawn_to_promote = None
-        # self.player_map[px][py] = promoted_to(px, py, pawn_promoted.name[0], skin=skin)
-        # pawn_promoted = 0
-        # y, x = self.get_pixels_middle_from_location(self.player_map[px][py].poz)
-        # self.player_map[px][py].x_p, self.player_map[px][py].y_p = x, y
-        # self.player_map[px][py].image_id = self.canvas.create_image(
-        #     self.get_pixels_middle_from_location(self.player_map[px][py].y, self.player_map[px][py].x),
-        #     image=self.player_map[px][py].image)
 
     def can_be_moved_to(self, current_player, s_poz):
         '''

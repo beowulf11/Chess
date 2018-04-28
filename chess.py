@@ -16,7 +16,13 @@ REMAINDERS:
  - Nezabudni Pawn promotion riesit v tejto classe lebo ak sa AI dostane
    do take pozicie tak tam zostane len Pawn stat navzdy
  - Plus v board.py treba priradit este obrazok novej figurky po Pawn promotion
-
+ 
+SPEED IMPROVEMENT:
+ - Kebyze je AI moc pomale tak sus kazde kolo kazdej figurke vygenerovat allowed_moves a possible_moves
+   pretoze tieto atributy sa vyuzivaju casto a nech ich netreba pre kazdy pohyb samostatne generovat.
+   Zamyslies sa treba este raz pretoze to neni az take lahke. By trebalo pre kazdy pohyb pozries lebo niektore
+   figurky si musia updatnut allowed_moves pretoze sa im bud objavia nove alebo niektore sa zablokuju
+ 
 '''
 
 
@@ -147,17 +153,13 @@ class Chess:
         return temp
 
     def ai_move(self):
+        print("Generating moves AI...")
         moves = self.generate_moves(self.player_map, 'B')
         best_move = choice(moves)
         self.move_figure(best_move)
         score = self.evaluate()
         self.undo()
         for move in moves:
-            # poz = move[2:]
-            # if self.player_map[poz[0]][poz[1]] and self.player_map[poz[0]][poz[1]].color == 'W':
-            # poz = move[:2]
-            # if self.player_map[poz[0]][poz[1]] == Pawn:
-            #     return move
             self.move_figure(move)
             if self.evaluate() < score:
                 score = self.evaluate()
@@ -182,7 +184,7 @@ class Chess:
 
         # print(move, pole[y][x])
 
-        figure_stats = 0 # Iba pre Rook, King, Pawn pretoze treba zaznamenavat ci sa uz pohli lebo to ovplivnuje ich dalsie mozne pohybi
+        figure_stats = 0  # Iba pre Rook, King, Pawn pretoze treba zaznamenavat ci sa uz pohli lebo to ovplivnuje ich dalsie mozne pohybi
         rook_el = 0
 
         figure_movement = []
@@ -230,24 +232,6 @@ class Chess:
 
         return figure_movement
 
-    def king_in_danger(self, pole, pos):
-        '''
-            Vrati ci je kral na pozicii `poz` v bezpeci
-        :param pole: hracie pole
-        :param pos: pozicia krala ktory ma byt skontrolovany
-        :return: True/False
-        '''
-
-        king = pole[pos[0]][pos[1]]
-
-        for line in pole:
-            for figure in line:
-                if figure and figure.color == king.enemy:
-                    if figure.check_king(pole, (king.y, king.x)):
-                        return True
-
-        return False
-
     def king_elimination_paths(self, king):
         '''
             Vrati cesty ktore vyhodia krala
@@ -260,7 +244,7 @@ class Chess:
 
         for line in self.player_map:
             for figure in line:
-                if figure and figure.color == king.enemy:
+                if figure == king.enemy:
                     path = figure.king_elimination_path(self.player_map, (king.y, king.x))
                     if path:
                         paths.append(path)
@@ -283,10 +267,14 @@ class Chess:
             else:
                 return figure
 
-        if not self.can_move_a_figure("W") or not self.can_move_a_figure("B"):
-            return "stailmate"
-
         self.update_king_elimination_positions()
+        if not self.can_move_a_figure("W") or not self.can_move_a_figure("B"):
+            if self.king_w_elimation_positions:
+                return "white"
+            elif self.king_b_elimation_positions:
+                return "black"
+            else:
+                return "stailmate"
 
     def en_passant_update(self):
         figure = self.moved_byt_two_figure
@@ -316,7 +304,8 @@ class Chess:
         self.moved_byt_two_figure = None
 
         if figure_move:
-            self.player_map[figure_move[0]][figure_move[1]], self.player_map[figure_move[2]][figure_move[3]] = self.player_map[figure_move[2]][figure_move[3]], 0
+            self.player_map[figure_move[0]][figure_move[1]], self.player_map[figure_move[2]][figure_move[3]] = \
+            self.player_map[figure_move[2]][figure_move[3]], 0
             figure = self.player_map[figure_move[0]][figure_move[1]]
             figure.y, figure.x = figure_move[0], figure_move[1]
 
@@ -342,7 +331,9 @@ class Chess:
         :return:
         '''
 
-        self.player_map[self.pawn_to_promote.y][self.pawn_to_promote.x] = new_figure_type(self.pawn_to_promote.y, self.pawn_to_promote.x, self.pawn_to_promote.color)
+        self.player_map[self.pawn_to_promote.y][self.pawn_to_promote.x] = new_figure_type(self.pawn_to_promote.y,
+                                                                                          self.pawn_to_promote.x,
+                                                                                          self.pawn_to_promote.color)
         y, x, *_ = self.pawn_promotion_move
         self.old.append((self.pawn_promotion_move, 1, Pawn, (y, x, *self.pawn_to_promote.get_stats()[2:]), 1))
         del self.pawn_to_promote
@@ -362,18 +353,20 @@ class Chess:
         if figure_pos is not None or figure is not None:
             if figure_pos is not None:
                 figure = pole[figure_pos[0]][figure_pos[1]]
-            return self.filter_king_save_moves([(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
+            return self.filter_king_save_moves(
+                [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
 
         moves = []
+        king_moves = []
         for line in pole:
             for figure in line:
                 if figure == color:
-                    if figure == King:
-                        k_m = [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
+                    # if figure == King:
+                    #     king_moves = [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
                     for move in figure.allowed_moves(self.player_map):
                         moves.append((figure.y, figure.x, *move))
 
-        return self.filter_king_save_moves(moves) + k_m
+        return moves
 
     def filter_king_save_moves(self, moves):
         '''
@@ -400,7 +393,7 @@ class Chess:
         if king_save:
             if len(king_save) > 1:
                 return []
-            moves = list(filter(lambda m:(m[2], m[3]) in king_save[0],moves))
+            moves = list(filter(lambda m: (m[2], m[3]) in king_save[0], moves))
         return moves
 
     def update_king_elimination_positions(self):
@@ -426,11 +419,8 @@ class Chess:
         :param color:
         :return:
         '''
-        for line in self.player_map:
-            for figure in line:
-                if figure and figure == color:
-                    if figure.allowed_moves(self.player_map):
-                        return True
+        if self.generate_moves(self.player_map, color):
+            return True
         return False
 
     def check_pawn_promotion(self):
@@ -478,7 +468,6 @@ class Chess:
 
 def choose_random_promotion():
     return choice((Rook, Queen, Knight, Bishop))
-
 
 
 if __name__ == '__main__':

@@ -25,17 +25,6 @@ class Figure:
         if self.skin:
             self.image = tkinter.PhotoImage(file=f'Images/{self.name[1].lower()}{self.color}{self.skin}.png')
 
-    def king_in_danger(self, pole):
-        for line in pole:
-            for figure in line:
-                if figure and str(figure)[:2] == f'{self.color}K':
-                    if figure.save_position(pole, (figure.y, figure.x)):
-                        pole[self.y][self.x] = 0
-                        ohrozenie = not figure.save_position(pole, (figure.y, figure.x))
-                        pole[self.y][self.x] = self
-                        return ohrozenie
-                    return False
-
     def allowed_moves(self, pole):
         '''
             Funkcia pomocou fukncie possible_moves urcite vsetky mozne pohybi a potom prefiltruje a zisti ktore pohyby
@@ -43,8 +32,6 @@ class Figure:
         :param pole: hracie pole
         :return: pole obsahujuce mozne pohyby k danemu polu
         '''
-        if self.king_in_danger(pole):
-            return self.allowed_moves_king(pole)
         all_moves = []
         for move in self.possible_moves():
             for poz in move:
@@ -57,44 +44,7 @@ class Figure:
                     break
                 else:
                     all_moves.append(poz)
-        return all_moves
-
-    def allowed_moves_king(self, pole):
-        '''
-            Funkcia pomocou fukncie possible_moves urcite vsetky mozne pohybi a potom prefiltruje a zisti ktore pohyby
-            su mozne na danej hracej ploche pre danu figurku
-        :param pole:
-        :return: dojrozmene pole obsahujuce mozne pohyby k danemu polu
-        '''
-
-        # TODO: Zisti co to real robi
-        all_moves = []
-        curr = self
-        pole[self.y][self.x] = 0
-        for i in pole:
-            for j in i:
-                if j and str(j)[:2] == f'{self.color}K':
-                    king = j
-        for move in self.possible_moves():
-            for poz in move:
-                if pole[poz[0]][poz[1]] and pole[poz[0]][poz[1]] == self.color:
-                    break
-                elif pole[poz[0]][poz[1]] and pole[poz[0]][poz[1]] == self.enemy:
-                    if pole[poz[0]][poz[1]].name[1] != 'K':
-                        curr_enemy = pole[poz[0]][poz[1]]
-                        pole[poz[0]][poz[1]] = Pawn(poz[0], poz[1], self.color, skin=0)
-                        if king.save_position(pole, king.poz):
-                            all_moves.append(poz)
-                        pole[poz[0]][poz[1]] = curr_enemy
-                        break
-                    break
-                else:
-                    pole[poz[0]][poz[1]] = Pawn(poz[0], poz[1], self.color, skin=0)
-                    if king.save_position(pole, king.poz):
-                        all_moves.append(poz)
-                    pole[poz[0]][poz[1]] = 0
-        pole[self.y][self.x] = curr
-        return all_moves
+        return self.filter(pole, all_moves)
 
     def update_figure(self, new_poz):
         self.y, self.x = new_poz[0], new_poz[1]
@@ -121,19 +71,6 @@ class Figure:
 
         return []
 
-    def king_checking_path(self, pole, s_pos):
-        '''
-            Vrati naspat cestu ktora vyhodi krala, plati pre Queen, Rook a Bishop
-        '''
-
-        for moves in self.possible_moves():  # Prejde cez vsetky mozne polia pohybov danej figurky
-            for i, tile in enumerate(moves):  # Prejde cez dane pohyby
-                if tile == s_pos:  # Ak sa policko ktore je mozne pre danu figurku rovna Kralovi moze ho vyhodit
-                    return [(self.y, self.x)] + moves[:i]
-                # Ak narazime na hociaku figurku tato cesta uz nemoze vyhodit krala
-                elif pole[int(tile[0])][int(tile[1])]:
-                    break
-
     def king_checking_paths(self, pole):
         for line in pole:
             for figure in line:
@@ -155,6 +92,17 @@ class Figure:
 
     def get_stats(self):
         return self.y, self.x, self.color, self.skin
+
+    def filter(self, pole, all_moves):
+        pole[self.y][self.x] = 0
+        danger = self.king_checking_paths(pole)
+        pole[self.y][self.x] = self
+        if len(danger) > 1:
+            return []
+        if len(danger) == 1:
+            danger = danger[0]
+            return [move for move in all_moves if move in danger]
+        return all_moves
 
     def get_moving_stats(self):
         return 1
@@ -438,8 +386,6 @@ class Knight(Figure):
             su mozne na danej hracej ploche pre Knight
         :return: pole obsahujuce mozne pohyby k danemu polu
         '''
-        if self.king_in_danger(pole):
-            return []
         all_moves = []
         for poz in self.possible_moves():
             # if poz[0] in range(8) and poz[1] in range(8):  # Ked je pozicia na hracej ploche
@@ -452,7 +398,7 @@ class Knight(Figure):
             else:
                 all_moves.append(poz)
 
-        return all_moves
+        return self.filter(pole, all_moves)
 
     def check_king(self, pole, s_pos):
         '''
@@ -462,12 +408,6 @@ class Knight(Figure):
             if i == s_pos:
                 return [(self.y, self.x)]
         return []
-
-    def king_checking_path(self, pole, s_pos):
-        '''
-            Vrati naspat cestu ktora vyhodi krala, co je iba policko figurky
-        '''
-        return [(self.y, self.x)]
 
     def king_elimination_path(self, pole, king_pos):
         for move in self.possible_moves():
@@ -580,91 +520,7 @@ class Pawn(Figure):
         elif not prvok and prvok1 and prvok1.color == self.enemy and prvok1 == Pawn and prvok1.moved_byt_two:
             all_moves.append(pozs[2])
 
-        danger = self.king_checking_paths(pole)
-        if len(danger) > 2:
-            return []
-        if len(danger) == 1:
-            return [move for move in all_moves if move in all_moves]
-
-        return all_moves
-
-    def allowed_moves_king(self, pole):
-        '''
-            Funkcia pomocou fukncie possible_moves urci vsetky mozne pohybi a potom prefiltruje a zisti ktore pohyby
-            su mozne na danej hracej ploche pre Pawn
-        :return: pole obsahujuce mozne pohyby k danemu polu
-        '''
-        # curr = self
-        # pole[self.y][self.x] = 0
-        for line in pole:
-            for figure in line:
-                if figure and figure.name[:2] == f'{self.color}K':
-                    king = figure
-                    break
-
-        pozs = self.possible_moves()
-        all_moves = []
-
-        # prva pozicia je na lavo od Pawn
-        try:
-            prvok = pole[pozs[0][0]][pozs[0][1]]
-            prvok1 = pole[self.y][self.x - 1]
-        except:
-            prvok = prvok1 = 0
-        if prvok and prvok.name[1] != 'K':
-            if prvok == self.enemy:
-                curr_enemy = pole[prvok.y][prvok.x]
-                pole[prvok.y][prvok.x] = Pawn(prvok.y, prvok.x, self.color, skin=0)
-                if king.save_position(pole, king.poz):
-                    all_moves.append(pozs[0])
-                pole[prvok.y][prvok.x] = curr_enemy
-
-        # pozre vedla Pawn do lava ci sa vedla nech nachadza Pawn ktory sa pohol o 2 policka a moze sa spravi En passant
-        elif not prvok and prvok1 and prvok1.name == self.enemy + 'PT':
-            curr_enemy = pole[prvok.y][prvok.x]
-            pole[prvok.y][prvok.x] = Pawn(prvok.y, prvok.x, self.color, skin=0)
-            if king.save_position(pole, king.poz):
-                all_moves.append(pozs[0])
-            pole[prvok.y][prvok.x] = curr_enemy
-
-        # druha pozicia pred o 1 Pawn
-        prvok = pole[pozs[1][0]][pozs[1][1]]
-        if not prvok:
-            curr_enemy = pole[pozs[1][0]][pozs[1][1]]
-            pole[pozs[1][0]][pozs[1][1]] = Pawn(pozs[1][0], pozs[1][1], self.color, skin=0)
-            if king.save_position(pole, king.poz):
-                all_moves.append(pozs[1])
-                # ked sa Pawn este nepohol ma moznost sa pohnut o dve policka dopredu
-                if len(pozs) == 4:
-                    prvok = pole[pozs[3][0]][pozs[3][1]]
-                    if not prvok:
-                        all_moves.append(pozs[3])
-            pole[pozs[1][0]][pozs[1][1]] = curr_enemy
-
-        # prva pozicia je na pravo od Pawn
-        try:
-            prvok = pole[pozs[2][0]][pozs[2][1]]
-            prvok1 = pole[self.y][self.x + 1]
-        except:
-            prvok = prvok1 = 0
-        if prvok and prvok.name[1] != 'K':
-            if prvok == self.enemy:
-                curr_enemy = pole[prvok.y][prvok.x]
-                pole[prvok.y][prvok.x] = Pawn(prvok.y, prvok.x, self.color, skin=0)
-                if king.save_position(pole, king.poz):
-                    all_moves.append(pozs[2])
-                pole[prvok.y][prvok.x] = curr_enemy
-
-        # pozre vedla Pawn do prava ci sa vedla nech nachadza Pawn ktory sa pohol o 2 policka a moze sa spravi En passant
-        elif not prvok and prvok1 and prvok1.name == self.enemy + 'PT':
-            curr_enemy = pole[prvok.y][prvok.x]
-            pole[prvok.y][prvok.x] = Pawn(prvok.y, prvok.x, self.color, skin=0)
-            if king.save_position(pole, king.poz):
-                all_moves.append(pozs[2])
-            pole[prvok.y][prvok.x] = curr_enemy
-
-        # pole[self.y][self.x] = curr
-        return all_moves
+        return self.filter(pole, all_moves)
 
     def update_figure(self, new_poz):
         """
@@ -688,12 +544,6 @@ class Pawn(Figure):
             if i == s_pos:
                 return [(self.y, self.x)]
         return []
-
-    def king_checking_path(self, pole, s_pos):
-        '''
-            Vrati naspat cestu ktora vyhodi krala, co je iba policko figurky
-        '''
-        return [(self.y, self.x)]
 
     def king_elimination_path(self, pole, king_pos):
         for move in self.attacking_pos():
@@ -807,8 +657,11 @@ class King(Figure):
 
     def check_king(self, pole, s_pos):
         '''
-            Skontroluje ci Kral moze vyhodit krala, kral nikdy nemoze vyhodit krala
+            Skontroluje ci Kral moze vyhodit krala
         '''
+        for i in self.possible_moves():
+            if i == s_pos:
+                return [(self.y, self.x)]
         return []
 
     def save_position(self, pole, pos):
@@ -832,13 +685,10 @@ class King(Figure):
 
         return True
 
-    def king_checking_path(self, pole, s_pos):
-        '''
-            Vrati naspat cestu ktora vyhodi krala, kral nikdy nemoze vyhodit krala
-        '''
-        return []
-
     def king_elimination_path(self, pole, king_pos):
+        for i in self.possible_moves():
+            if i == king_pos:
+                return [(self.y, self.x)]
         return []
 
     def get_stats(self):
