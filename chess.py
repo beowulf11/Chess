@@ -33,54 +33,54 @@ class Chess:
         self.saving_pos_w_king = []
         self.saving_pos_b_king = []
 
-        self.pawn_table = [0, 0, 0, 0, 0, 0, 0, 0,
-                           50, 50, 50, 50, 50, 50, 50, 50,
-                           10, 10, 20, 30, 30, 20, 10, 10,
-                           5, 5, 10, 25, 25, 10, 5, 5,
-                           0, 0, 0, 20, 20, 0, 0, 0,
-                           5, -5, -10, 0, 0, -10, -5, 5,
-                           5, 10, 10, -20, -20, 10, 10, 5,
-                           0, 0, 0, 0, 0, 0, 0, 0]
-        self.knight_table = [-50, -40, -30, -30, -30, -30, -40, -50,
-                             -40, -20, 0, 0, 0, 0, -20, -40,
-                             -30, 0, 10, 15, 15, 10, 0, -30,
-                             -30, 5, 15, 20, 20, 15, 5, -30,
-                             -30, 0, 15, 20, 20, 15, 0, -30,
-                             -30, 5, 10, 15, 15, 10, 5, -30,
-                             -40, -20, 0, 5, 5, 0, -20, -40,
-                             -50, -40, -30, -30, -30, -30, -40, -50, ]
-        self.bishop_table = [-20, -10, -10, -10, -10, -10, -10, -20,
-                             -10, 0, 0, 0, 0, 0, 0, -10,
-                             -10, 0, 5, 10, 10, 5, 0, -10,
-                             -10, 5, 5, 10, 10, 5, 5, -10,
-                             -10, 0, 10, 10, 10, 10, 0, -10,
-                             -10, 10, 10, 10, 10, 10, 10, -10,
-                             -10, 5, 0, 0, 0, 0, 5, -10,
-                             -20, -10, -10, -10, -10, -10, -10, -20, ]
-        self.rook_table = [0, 0, 0, 0, 0, 0, 0, 0,
-                           5, 10, 10, 10, 10, 10, 10, 5,
-                           -5, 0, 0, 0, 0, 0, 0, -5,
-                           -5, 0, 0, 0, 0, 0, 0, -5,
-                           -5, 0, 0, 0, 0, 0, 0, -5,
-                           -5, 0, 0, 0, 0, 0, 0, -5,
-                           -5, 0, 0, 0, 0, 0, 0, -5,
-                           0, 0, 0, 5, 5, 0, 0, 0]
-        self.queen_table = [-20, -10, -10, -5, -5, -10, -10, -20,
-                            -10, 0, 0, 0, 0, 0, 0, -10,
-                            -10, 0, 5, 5, 5, 5, 0, -10,
-                            -5, 0, 5, 5, 5, 5, 0, -5,
-                            0, 0, 5, 5, 5, 5, 0, -5,
-                            -10, 5, 5, 5, 5, 5, 0, -10,
-                            -10, 0, 5, 0, 0, 0, 0, -10,
-                            -20, -10, -10, -5, -5, -10, -10, -20]
-        self.king_table = [-30, -40, -40, -50, -50, -40, -40, -30,
-                           -30, -40, -40, -50, -50, -40, -40, -30,
-                           -30, -40, -40, -50, -50, -40, -40, -30,
-                           -30, -40, -40, -50, -50, -40, -40, -30,
-                           -20, -30, -30, -40, -40, -30, -30, -20,
-                           -10, -20, -20, -20, -20, -20, -20, -10,
-                           20, 20, 0, 0, 0, 0, 20, 20,
-                           20, 30, 10, 0, 0, 10, 30, 20]
+        self.pawn_table = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+                           1.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0, 1.0,
+                           0.5, 0.5, 1.0, 2.5, 2.5, 1.0, 0.5, 0.5,
+                           0.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0,
+                           0.5, -0.5, -1.0, 0.0, 0.0, -1.0, -0.5, 0.5,
+                           0.5, 1.0, 1.0, -2.0, -2.0, 1.0, 1.0, 0.5,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.knight_table = [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0,
+                             -4.0, -2.0, 0.0, 0.0, 0.0, 0.0, -2.0, -4.0,
+                             -3.0, 0.0, 1.0, 1.5, 1.5, 1.0, 0.0, -3.0,
+                             -3.0, 0.5, 1.5, 2.0, 2.0, 1.5, 0.5, -3.0,
+                             -3.0, 0.0, 1.5, 2.0, 2.0, 1.5, 0.0, -3.0,
+                             -3.0, 0.5, 1.0, 1.5, 1.5, 1.0, 0.5, -3.0,
+                             -4.0, -2.0, 0.0, 0.5, 0.5, 0.0, -2.0, -4.0,
+                             -5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0]
+        self.bishop_table = [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0,
+                             -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0,
+                             -1.0, 0.0, 0.5, 1.0, 1.0, 0.5, 0.0, -1.0,
+                             -1.0, 0.5, 0.5, 1.0, 1.0, 0.5, 0.5, -1.0,
+                             -1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0, -1.0,
+                             -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+                             -1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, -1.0,
+                             -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0]
+        self.rook_table = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5,
+                           -0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5,
+                           -0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5,
+                           -0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5,
+                           -0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5,
+                           -0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5,
+                           0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0]
+        self.queen_table = [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0,
+                            -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0,
+                            -1.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0,
+                            -0.5, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5,
+                            0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -0.5,
+                            -1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0,
+                            -1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, -1.0,
+                            -2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0]
+        self.king_table = [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+                           -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+                           -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+                           -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0,
+                           -2.0, -3.0, -3.0, -4.0, -4.0, -3.0, -3.0, -2.0,
+                           -1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0,
+                           2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0,
+                           2.0, 3.0, 1.0, 0.0, 0.0, 1.0, 3.0, 2.0]
 
         self.old = []
 
@@ -152,20 +152,40 @@ class Chess:
                             temp.append(el)
         return temp
 
+    def minmax(self, depth, color):
+        if not depth:
+            return 0, self.evaluate()
+        if color:
+            moves = self.generate_moves(self.player_map, 'B')
+            best_move = 0
+            score = 9999
+            for move in moves:
+                self.move_figure(move)
+                minmax_s = self.minmax(depth - 1, abs(color - 1))
+                if score > minmax_s[1]:
+                    score = minmax_s[1]
+                    best_move = move
+                self.undo()
+            return best_move, score
+        else:
+            moves = self.generate_moves(self.player_map, 'W')
+            best_move = 0
+            score = -9999
+            for move in moves:
+                self.move_figure(move)
+                minmax_s = self.minmax(depth - 1, abs(color - 1))
+                if score < minmax_s[1]:
+                    score = minmax_s[1]
+                    best_move = move
+                self.undo()
+            return best_move, score
+
     def ai_move(self):
-        print("Generating moves AI...")
-        moves = self.generate_moves(self.player_map, 'B')
-        best_move = choice(moves)
-        self.move_figure(best_move)
-        score = self.evaluate()
-        self.undo()
-        for move in moves:
-            self.move_figure(move)
-            if self.evaluate() < score:
-                score = self.evaluate()
-                best_move = move
-            self.undo()
-        return best_move
+        print("Generating moves MinMax------")
+        a, s = self.minmax(3, 1)
+        print(a)
+        print('-----------------------------')
+        return a
 
     def move_figure(self, move):
         """
@@ -293,11 +313,28 @@ class Chess:
             for figure in line:
                 if figure:
                     if figure.color == 'B':
-                        score -= figure.score
+                        score -= self.figure_score(figure)
                     else:
-                        score += figure.score
+                        score += self.figure_score(figure)
 
         return score
+
+    def figure_score(self, figure):
+        poz = figure.y * 8 + figure.x
+        if figure.color == 'B':
+            poz = -(figure.y * 8 + figure.x) - 1
+        if figure == Pawn:
+            return figure.score + self.pawn_table[poz]
+        if figure == Rook:
+            return figure.score + self.rook_table[poz]
+        if figure == Bishop:
+            return figure.score + self.bishop_table[poz]
+        if figure == Knight:
+            return figure.score + self.knight_table[poz]
+        if figure == Queen:
+            return figure.score + self.queen_table[poz]
+        if figure == King:
+            return figure.score + self.king_table[poz]
 
     def undo(self):
         figure_move, figure_stats, elimineted_figure, elimineted_figure_stats, more_elimination = self.old.pop()
@@ -305,7 +342,7 @@ class Chess:
 
         if figure_move:
             self.player_map[figure_move[0]][figure_move[1]], self.player_map[figure_move[2]][figure_move[3]] = \
-            self.player_map[figure_move[2]][figure_move[3]], 0
+                self.player_map[figure_move[2]][figure_move[3]], 0
             figure = self.player_map[figure_move[0]][figure_move[1]]
             figure.y, figure.x = figure_move[0], figure_move[1]
 
