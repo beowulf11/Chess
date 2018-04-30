@@ -400,36 +400,6 @@ class Board(tkinter.Frame):
                         return True
         return False
 
-    # def checking_for_game_end(self):
-    #     '''
-    #         Funkcia skontroluje stav hry a pokial je Vyhra/Remiza ukonci hru s oznamenim
-    #     '''
-    #     if self.king_w_elimation_positions:
-    #         sav_pos = self.saving_pos(self.king_w_elimation_positions)
-    #         if sav_pos:
-    #             self.saving_pos_w_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-    #                 self.player_map, self.kings[1].poz)
-    #             self.can_be_moved_to('W', self.saving_pos_w_king)
-    #             if not self.can_be_moved_to('W', self.saving_pos_w_king) and not self.kings[1].allowed_moves(
-    #                     self.player_map):
-    #                 return 'white_lost'
-    #         elif not self.kings[1].allowed_moves(self.player_map):
-    #             return 'white_lost'
-    #
-    #     elif self.king_b_elimation_positions:
-    #         sav_pos = self.saving_pos(self.king_b_elimation_positions)
-    #         if sav_pos:
-    #             self.saving_pos_b_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-    #                 self.player_map, self.kings[0].poz)
-    #             if not self.can_be_moved_to('B', self.saving_pos_b_king) and not self.kings[0].allowed_moves(
-    #                     self.player_map):
-    #                 return 'black_lost'
-    #         elif not self.kings[0].allowed_moves(self.player_map):
-    #             return 'black_lost'
-    #
-    #     elif not self.can_move_a_figure('W') or not self.can_move_a_figure('B'):
-    #         return 'remiza'
-
     def pawn_promotion(self):
         '''
             Vytvori obrazok a nastavi poziciu pre figurku ktora bola vymenena za Pawn ktory bol promotnuti
@@ -501,13 +471,14 @@ class Board(tkinter.Frame):
         try:
             with open('game_save.txt', 'w') as file:
                 file.write(str(self.turn_color) + '\n')
-                for k in self.player_map:
+                for k in self.game.player_map:
                     for i in k:
                         if i:
-                            if i.name[1] == 'P':
-                                file.write(str(i)[:2] + str(i.moves)[0] + ' ' + i.poz + '\n')
-                            else:
-                                file.write(str(i) + ' ' + i.poz + '\n')
+                            stats = i.get_stats_save()
+                            file.write(str(i)[1] + ' ')
+                            for stat in stats:
+                                file.write(str(stat) + ' ')
+                            file.write('\n')
             self.save_nottif = []
             self.save_nottif.append(self.canvas.create_rectangle(250, 570, 450, 670, fill='white', width=2))
             self.save_nottif.append(self.canvas.create_text(350, 620, text='Saved', font=("Arial", 35)))
@@ -523,6 +494,25 @@ class Board(tkinter.Frame):
             self.canvas.delete(i)
 
     def load(self, args=0):
+        def convert_stats(stats, skin):
+            conv_stats = []
+            skin_inserted = False
+            for stat in stats:
+                if stat == 'False':
+                    if not skin_inserted:
+                        conv_stats.append(skin)
+                        skin_inserted = True
+                    conv_stats.append(False)
+                elif stat == 'True':
+                    if not skin_inserted:
+                        conv_stats.append(skin)
+                        skin_inserted = True
+                    conv_stats.append(True)
+                elif stat != 'B' and stat != 'W':
+                    conv_stats.append(int(stat))
+                else:
+                    conv_stats.append(stat)
+            return conv_stats
         try:
             with open('settings.txt', 'r') as file:
                 json_file = json.load(file)
@@ -531,31 +521,19 @@ class Board(tkinter.Frame):
                     self.dragging_enabled = True
                 else:
                     self.dragging_enabled = False
-            subor = open('game_save.txt', 'r')
-            for i in range(8):
-                for j in range(8):
-                    self.player_map[i][j] = 0
-            self.kings = [0, 0]
-            self.turn_color = int(subor.readline())
-            l = subor.readline()[:-1]
-            while l:
-                fig, poz = l.split()
-                figure_c = self.figure_acronym(fig[1])
-                if figure_c == King:
-                    if fig[0] == 'B':
-                        self.kings[0] = figure_c(poz[0], poz[1], fig[0], fig[2], skin)
-                        self.player_map[int(poz[0])][int(poz[1])] = self.kings[0]
-                    else:
-                        self.kings[1] = figure_c(poz[0], poz[1], fig[0], fig[2], skin)
-                        self.player_map[int(poz[0])][int(poz[1])] = self.kings[1]
-                elif figure_c == Pawn or figure_c == Rook:
-                    self.player_map[int(poz[0])][int(poz[1])] = figure_c(poz[0], poz[1], fig[0], fig[2], skin)
-                else:
-                    self.player_map[int(poz[0])][int(poz[1])] = figure_c(poz[0], poz[1], fig[0], skin)
+            with open('game_save.txt', 'r') as subor:
+                for i in range(8):
+                    for j in range(8):
+                        self.game.player_map[i][j] = 0
+                self.turn_color = int(subor.readline())
                 l = subor.readline()[:-1]
-            subor.close()
+                while l:
+                    fig, *stats = l.split()
+                    stats = convert_stats(stats, skin)
+                    self.game.player_map[stats[0]][stats[1]] = self.figure_acronym(fig)(*stats)
+                    l = subor.readline()[:-1]
             self.create_figure_images()
-        except:
+        except IndentationError:
             self.swap_frames()
 
     def figure_acronym(self, acr):

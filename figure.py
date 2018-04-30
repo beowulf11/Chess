@@ -93,6 +93,9 @@ class Figure:
     def get_stats(self):
         return self.y, self.x, self.color, self.skin
 
+    def get_stats_save(self):
+        return self.get_stats()[:-1]
+
     def filter(self, pole, all_moves):
         pole[self.y][self.x] = 0
         danger = self.king_checking_paths(pole)
@@ -272,6 +275,9 @@ class Rook(Figure):
 
     def get_stats(self):
         return super().get_stats() + ((self.moved,))
+
+    def get_stats_save(self):
+        return super().get_stats()[:-1] + ((self.moved,))
 
     def get_moving_stats(self):
         return self.moved
@@ -554,6 +560,9 @@ class Pawn(Figure):
     def get_stats(self):
         return super().get_stats() + ((self.moved, self.moved_byt_two))
 
+    def get_stats_save(self):
+        return super().get_stats()[:-1] + ((self.moved, self.moved_byt_two))
+
     def get_moving_stats(self):
         return self.moved, self.moved_byt_two
 
@@ -693,6 +702,9 @@ class King(Figure):
 
     def get_stats(self):
         return super().get_stats() + ((self.moved,))
+
+    def get_stats_save(self):
+        return super().get_stats()[:-1] + ((self.moved,))
 
     def get_moving_stats(self):
         return self.moved
