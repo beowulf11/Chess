@@ -1,6 +1,7 @@
 from figure import Queen, Rook, Bishop, Knight, Pawn, King
 from random import choice
-
+import time
+import threading
 '''
 TODO:
  - Zmenit system ako sa figurky volaju a ako sa naraba z ich poziciami
@@ -27,8 +28,10 @@ SPEED IMPROVEMENT:
 
 
 class Chess:
-    def __init__(self, ai):
+    def __init__(self, ai, canvas):
         self.player_map = [[0 for _ in range(8)] for _ in range(8)]
+
+        self.canvas = canvas
 
         self.saving_pos_w_king = []
         self.saving_pos_b_king = []
@@ -180,11 +183,45 @@ class Chess:
                 self.undo()
             return best_move, score
 
+    def alpha_beta(self, depth=2, color=1, alpha=None, beta=None):
+        if not depth:
+            return 0, self.evaluate()
+        if color:
+            moves = self.generate_moves(self.player_map, 'B')
+            best_move = 0
+            score = 9999
+            for move in moves:
+                self.move_figure(move)
+                minmax_s = self.alpha_beta(depth - 1, abs(color - 1), alpha=score)
+                if beta is not None and minmax_s[1] < beta:
+                    self.undo()
+                    return best_move, minmax_s[1]
+                if score > minmax_s[1]:
+                    score = minmax_s[1]
+                    best_move = move
+                self.undo()
+            return best_move, score
+        else:
+            moves = self.generate_moves(self.player_map, 'W')
+            score = -9999
+            for move in moves:
+                self.move_figure(move)
+                minmax_s = self.alpha_beta(depth - 1, abs(color - 1), beta=score)
+                if alpha is not None and minmax_s[1] > alpha:
+                    self.undo()
+                    return 0, minmax_s[1]
+                if score < minmax_s[1]:
+                    score = minmax_s[1]
+                self.undo()
+            return 0, score
+
     def ai_move(self):
-        print("Generating moves MinMax------")
-        a, s = self.minmax(3, 1)
-        print(a)
-        print('-----------------------------')
+        print("Generating moves Alpha-Beta------")
+        t = time.time()
+        a, s = self.alpha_beta(3, 1)
+        print(self.minmax(3, 1)[0])
+        print(a, round(time.time()-t, 2))
+        print('---------------------------------')
         return a
 
     def move_figure(self, move):
@@ -312,7 +349,7 @@ class Chess:
         for line in self.player_map:
             for figure in line:
                 if figure:
-                    if figure.color == 'B':
+                    if figure == 'B':
                         score -= self.figure_score(figure)
                     else:
                         score += self.figure_score(figure)
@@ -321,7 +358,7 @@ class Chess:
 
     def figure_score(self, figure):
         poz = figure.y * 8 + figure.x
-        if figure.color == 'B':
+        if figure == 'B':
             poz = -(figure.y * 8 + figure.x) - 1
         if figure == Pawn:
             return figure.score + self.pawn_table[poz]
@@ -390,16 +427,14 @@ class Chess:
         if figure_pos is not None or figure is not None:
             if figure_pos is not None:
                 figure = pole[figure_pos[0]][figure_pos[1]]
-            return self.filter_king_save_moves(
-                [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
+            # moves = self.filter_king_save_moves(
+            #     [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
+            return [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
 
         moves = []
-        king_moves = []
         for line in pole:
             for figure in line:
                 if figure == color:
-                    # if figure == King:
-                    #     king_moves = [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
                     for move in figure.allowed_moves(self.player_map):
                         moves.append((figure.y, figure.x, *move))
 

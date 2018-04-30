@@ -3,6 +3,7 @@ import json
 from figure import Queen, Rook, Bishop, Knight, Pawn, King
 from random import randint, choice
 import chess
+import threading
 
 
 class Board(tkinter.Frame):
@@ -32,7 +33,7 @@ class Board(tkinter.Frame):
         self.ai = True
         self.ai_move_false = True
 
-        self.game = chess.Chess(self.ai)
+        self.game = chess.Chess(self.ai, self.canvas)
 
     def testing(self, args):
         self.game.undo()
@@ -361,6 +362,7 @@ class Board(tkinter.Frame):
             pix_y, pix_x = self.get_pixels_middle_from_location(move[2], move[3])
             print("Moving figure...")
             self.move_figure_to(figure, pix_x, pix_y)
+
         self.selected_figure, self.possible_moves = 0, 0
         self.end_game()
 
