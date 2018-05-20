@@ -2,6 +2,7 @@ import tkinter
 import json
 from figure import Queen, Rook, Bishop, Knight, Pawn, King
 from random import randint, choice
+from time import sleep
 import chess
 import threading
 
@@ -24,33 +25,17 @@ class Board(tkinter.Frame):
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<B1-Motion>", self.on_motion)
         self._drag_data = {'x': 0, 'y': 0, 'item': None}
-        self.canvas.bind("<m>", self.testing)
-        self.canvas.bind("<p>", self.ascii)
-        self.canvas.bind("<s>", self.score)
 
         self.end_game_message = ''
 
         self.ai = True
-        self.ai_move_false = True
 
-        self.game = chess.Chess(self.ai, self.canvas)
+        with open('settings.txt', 'r') as file:
+            settings = json.load(file)
+            if settings["ai"] == "False":
+                self.ai = False
 
-    def testing(self, args):
-        self.game.undo()
-        self.turn_color = abs(self.turn_color - 1)
-        self.create_figure_images()
-        # TODO : treba ked AI spravi move prejst toutou loopou lebo niektore figurky budu na zlej pozicii
-        for line in self.game.player_map:
-            for figure in line:
-                if figure and (figure.y_p, figure.x_p) != self.get_pixels_middle_from_location(figure.y, figure.x):
-                    figure.y_p, figure.x_p = self.get_pixels_middle_from_location(figure.y, figure.x)
-                    self.canvas.coords(figure.image_id, figure.x_p, figure.y_p)
-
-    def score(self, args):
-        print(self.game.evaluate())
-
-    def ascii(self, args):
-        self.game.ascii()
+        # self.game = chess.Chess(self.ai, self.canvas)
 
     def swap_frames(self, args=None):
         '''
@@ -62,7 +47,7 @@ class Board(tkinter.Frame):
             del self.end_game_message
         self.controller.show_frames('Program')
 
-    def set_up_game(self):
+    def set_up_game(self, mode='n'):
         '''
             Nastavi class na novu hru
         '''
@@ -94,7 +79,8 @@ class Board(tkinter.Frame):
         self.next_turn = True
         self.turn_color = 1  # 0-cierny, 1-biely
 
-        self.game.testing()
+        self.game = chess.Chess(self.ai, self.canvas, mode)
+
         self.create_figure_images()
 
     def game_loop(self, pozs):
@@ -111,21 +97,6 @@ class Board(tkinter.Frame):
     def select_figure(self, y, x):
         self.selected_figure = (y, x)
         self.possible_moves = self.game.generate_moves_for_human((y, x))
-        # Pozriet ci sa nahodou nieco nevynechalo ale toto vsetko riesit v chess.py
-
-        # if self.turn_color and self.selected_figure != King and self.king_w_elimation_positions:
-        #     for x in self.selected_figure.allowed_moves(self.player_map):
-        #         if x in self.saving_pos_w_king:
-        #             self.possible_moves.append(x)
-        # elif not self.turn_color and self.selected_figure != King and self.king_b_elimation_positions:
-        #     for x in self.selected_figure.allowed_moves(self.player_map):
-        #         if x in self.saving_pos_b_king:
-        #             self.possible_moves.append(x)
-        # elif self.selected_figure.name[1:] == 'KT':
-        #     self.possible_moves = self.selected_figure.allowed_moves(
-        #         self.player_map) + self.selected_figure.castling(self.player_map)
-        # else:
-        #     self.possible_moves = self.selected_figure.allowed_moves(self.player_map)
         self.draw_possible_moves(self.possible_moves)
 
     def moving_logic(self, pozs):
@@ -264,35 +235,6 @@ class Board(tkinter.Frame):
             self.possible_moves_img.append(
                 self.canvas.create_oval(s[1] - 10, s[0] - 10, s[1] + 10, s[0] + 10, fill=self.hint_color))
 
-    def update_king_elimination_positions(self):
-        '''
-            Priradi kralom pozicie figurok ktore ich mozu vyhodit
-        '''
-        self.king_w_elimation_positions = self.get_king_elimination_positions('W')
-
-        self.king_b_elimation_positions = self.get_king_elimination_positions('B')
-
-    def get_king_elimination_positions(self, color):
-        '''
-            Vrati pozicie figurok ktore mozu vyhodit krala farby color
-        '''
-        temp = []
-        if color == 'W':
-            for j in self.player_map:
-                for i in j:
-                    if i and i == 'B':
-                        el = i.check_king(self.player_map, (self.kings[1].y, self.kings[1].x))
-                        if el:
-                            temp.append(el)
-        else:
-            for j in self.player_map:
-                for i in j:
-                    if i and i == 'W':
-                        el = i.check_king(self.player_map, (self.kings[0].y, self.kings[0].x))
-                        if el:
-                            temp.append(el)
-        return temp
-
     def get_pixels_middle_from_location(self, y, x):
         '''
             Vrati stredne pixelove pozicie policka na pozici l_l
@@ -301,34 +243,7 @@ class Board(tkinter.Frame):
         return (self.posun_y + y * self.width_policka + self.width_policka // 2,
                 self.posun_x + x * self.width_policka + self.width_policka // 2)
 
-    def move_figure_to(self, fig=0, pix_x=0, pix_y=0):
-        '''
-            Animuje pohyb a zaroven na konci animacie dovoli priebehu dalsieho kola
-        '''
-        if fig.x_p != pix_x or fig.y_p != pix_y:
-            if fig.x_p != pix_x:
-                if fig.x_p > pix_x:
-                    fig.x_p -= 0.5
-                else:
-                    fig.x_p += 0.5
-            if fig.y_p != pix_y:
-                if fig.y_p > pix_y:
-                    fig.y_p -= 0.5
-                else:
-                    fig.y_p += 0.5
-            self.canvas.coords(fig.image_id, fig.x_p, fig.y_p)
-            # dokoncenie animacie povolenie dalsieho pohybu
-            self.canvas.after(1, self.move_figure_to, fig, pix_x, pix_y)
-
-    def finished_game(self, looser):
-        self.end_game_message = [self.canvas.create_rectangle(100, 300, 610, 400, fill='white'),
-                                 self.canvas.create_text(350, 350, font=("Arial", 50),
-                                                         text=f'{looser} prehrali')]
-        self.after_timer = self.canvas.after(7000, self.swap_frames)
-
     def move_figure_human(self, movement):
-
-        # print(self.selected_figure, movement, self.possible_moves)
         if movement in self.possible_moves:
             self.figure_move(movement)
             return True
@@ -339,22 +254,22 @@ class Board(tkinter.Frame):
         answer = self.game.end_round_update()
         if answer == Pawn:
             self.choosing_figure(answer)
-            self.ai_move_false = True
         elif answer in {'black', 'white'}:
             self.finished_game(answer)
         elif answer == 'stailmate':
             self.finished_game(answer)
         else:
             self.turn_color = abs(self.turn_color - 1)
-            if self.turn_color == 0 and self.ai and self.ai_move_false:
-                self.figure_move(self.game.ai_move())
+            if self.turn_color == 0 and self.ai:
+                f_m = self.game.ai_move(3)
                 self.create_figure_images()
+                self.game.player_map[f_m[0]][f_m[1]].y_p, self.game.player_map[f_m[0]][f_m[1]].x_p = self.get_pixels_middle_from_location(*f_m[:2])
+                self.figure_move(f_m)
 
     def figure_move(self, movement):
         '''
             Zisiti ci sa figurka moze pohnut a ak ano tak zavola funkciu na pohyb a pripravi hru na dalsie kolo
         '''
-
         move = (movement[0], movement[1], movement[2], movement[3])
         figure_movement = self.game.move_figure(move)
         for move in figure_movement:
@@ -366,12 +281,31 @@ class Board(tkinter.Frame):
         self.selected_figure, self.possible_moves = 0, 0
         self.end_game()
 
-    def figure_move_next_round(self):
+    def move_figure_to(self, fig=0, pix_x=0, pix_y=0):
         '''
-            Pripravi hru na dalsie kolo
+            Animuje pohyb a zaroven na konci animacie dovoli priebehu dalsieho kola
         '''
-        self.next_turn = False  # Zacina animacia, zakaz dalsieho pohybu az do skoncenia animacie
-        self.turn_color = abs(self.turn_color - 1)
+        while fig.x_p != pix_x or fig.y_p != pix_y:
+            if fig.x_p != pix_x:
+                if fig.x_p > pix_x:
+                    fig.x_p -= 0.5
+                else:
+                    fig.x_p += 0.5
+            if fig.y_p != pix_y:
+                if fig.y_p > pix_y:
+                    fig.y_p -= 0.5
+                else:
+                    fig.y_p += 0.5
+            self.canvas.coords(fig.image_id, fig.x_p, fig.y_p)
+            self.canvas.update()
+            sleep(0.001)
+            # self.canvas.after(1, self.move_figure_to, fig, pix_x, pix_y)
+
+    def finished_game(self, looser):
+        self.end_game_message = [self.canvas.create_rectangle(100, 300, 610, 400, fill='white'),
+                                 self.canvas.create_text(350, 350, font=("Arial", 50),
+                                                         text=f'{looser} prehrali')]
+        self.after_timer = self.canvas.after(7000, self.swap_frames)
 
     def restore_location(self, fig):
         self.next_turn = False
@@ -490,11 +424,27 @@ class Board(tkinter.Frame):
             self.canvas.after(1000, self.destroy_items, self.save_nottif)
 
     def destroy_items(self, items):
+        '''
+            Odstany graficke objekty z canvas
+        :param items: objekty ktore sa maju odstranit
+        :return:
+        '''
         for i in items:
             self.canvas.delete(i)
 
     def load(self, args=0):
+        '''
+            Nacita hru zo suboru game_save.txt
+        :param args:
+        :return:
+        '''
         def convert_stats(stats, skin):
+            '''
+                Upravi statistiky a prida skin do nich
+            :param stats: Premeni string pole na spravne premenne pre stats figurky
+            :param skin: Skin ktory sa ma pridat do statistik
+            :return:
+            '''
             conv_stats = []
             skin_inserted = False
             for stat in stats:
@@ -513,6 +463,7 @@ class Board(tkinter.Frame):
                 else:
                     conv_stats.append(stat)
             return conv_stats
+
         try:
             with open('settings.txt', 'r') as file:
                 json_file = json.load(file)
@@ -533,7 +484,7 @@ class Board(tkinter.Frame):
                     self.game.player_map[stats[0]][stats[1]] = self.figure_acronym(fig)(*stats)
                     l = subor.readline()[:-1]
             self.create_figure_images()
-        except IndentationError:
+        except:
             self.swap_frames()
 
     def figure_acronym(self, acr):
@@ -556,25 +507,20 @@ class Board(tkinter.Frame):
                 self.dragging_enabled = False
         figures = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
         x = randint(0, 7)
-        self.kings = [King(0, x, 'B', 'F', skin), King(7, abs(7 - x), 'W', 'F', skin)]
+        self.game.player_map[0][x] = King(0, x, 'B', skin, False)
+        self.game.player_map[7][abs(7 - x)] = King(7, abs(7 - x), 'W', skin, False)
         for i in range(2):
             for j in range(8):
-                if i == 0 and j == x:
+                if self.game.player_map[i][j]:
                     continue
                 fig = figures[randint(0, len(figures) - 1)]
-                if fig == Pawn:
-                    self.player_map[i][j] = fig(i, j, 'B', 'T', skin)
-                    self.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', 'T', skin)
-                elif fig == Rook:
-                    self.player_map[i][j] = fig(i, j, 'B', 'F', skin)
-                    self.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', 'F', skin)
+                if fig == Pawn or fig == Rook:
+                    self.game.player_map[i][j] = fig(i, j, 'B', skin, False)
+                    self.game.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin, False)
                 else:
-                    self.player_map[i][j] = fig(i, j, 'B', skin)
-                    self.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin)
-        self.player_map[0][x] = self.kings[0]
-        self.player_map[7][abs(7 - x)] = self.kings[1]
+                    self.game.player_map[i][j] = fig(i, j, 'B', skin)
+                    self.game.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin)
         self.create_figure_images()
-        self.update_king_elimination_positions()
 
     def random_positions_normal(self):
         '''
@@ -588,27 +534,32 @@ class Board(tkinter.Frame):
                 self.dragging_enabled = True
             else:
                 self.dragging_enabled = False
-        figures = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
+        figures_w = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
+        figures_b = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
         x = randint(0, 7)
-        self.kings = [King(0, x, 'B', 'F', skin), King(7, x, 'W', 'F', skin)]
+        self.game.player_map[0][x] = King(0, x, 'B', skin, False)
+        x = randint(0, 7)
+        self.game.player_map[7][x] = King(7, x, 'W', skin, False)
         for i in range(2):
             for j in range(8):
-                if i == 0 and j == x:
+                print(len(figures_w))
+                if self.game.player_map[i][j]:
                     continue
-                fig = figures.pop(randint(0, len(figures) - 1))
-                if fig == Pawn:
-                    self.player_map[i][j] = fig(i, j, 'B', 'T', skin)
-                    self.player_map[7 - i][j] = fig(7 - i, j, 'W', 'T', skin)
-                elif fig == Rook:
-                    self.player_map[i][j] = fig(i, j, 'B', 'F', skin)
-                    self.player_map[7 - i][j] = fig(7 - i, j, 'W', 'F', skin)
+                fig = figures_w.pop(randint(0, len(figures_w) - 1))
+                if fig == Pawn or fig == Rook:
+                    self.game.player_map[i][j] = fig(i, j, 'B', skin, True)
                 else:
-                    self.player_map[i][j] = fig(i, j, 'B', skin)
-                    self.player_map[7 - i][j] = fig(7 - i, j, 'W', skin)
-        self.player_map[0][x] = self.kings[0]
-        self.player_map[7][x] = self.kings[1]
+                    self.game.player_map[i][j] = fig(i, j, 'B', skin)
+        for i in range(6, 8):
+            for j in range(8):
+                if self.game.player_map[i][j]:
+                    continue
+                fig = figures_b.pop(randint(0, len(figures_b) - 1))
+                if fig == Pawn or fig == Rook:
+                    self.game.player_map[i][j] = fig(i, j, 'W', skin, True)
+                else:
+                    self.game.player_map[i][j] = fig(i, j, 'W', skin)
         self.create_figure_images()
-        self.update_king_elimination_positions()
 
     def random_positions_chaos(self):
         '''
@@ -685,27 +636,27 @@ class Board(tkinter.Frame):
                 self.dragging_enabled = True
             else:
                 self.dragging_enabled = False
-        self.kings = [King(0, 4, 'B', skin, 'T'), King(7, 4, 'W', skin, 'T')]
-        self.player_map = [
-            [Rook(0, 0, 'B', skin, 'T'), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
-             self.kings[0],
-             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, 'T')],
-            [Pawn(1, 0, 'B', 'F', skin), Pawn(1, 1, 'B', 'F', skin), Pawn(1, 2, 'B', 'F', skin),
-             Pawn(1, 3, 'B', 'F', skin),
-             Pawn(1, 4, 'B', 'F', skin), Pawn(1, 5, 'B', 'F', skin), Pawn(1, 6, 'B', 'F', skin),
-             Pawn(1, 7, 'B', 'F', skin)],
+
+        self.game.player_map = [
+            [Rook(0, 0, 'B', skin, False), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
+             King(0, 4, 'B', skin, False),
+             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, False)],
+            [Pawn(1, 0, 'B', skin, False), Pawn(1, 1, 'B', skin, False), Pawn(1, 2, 'B', skin, False),
+             Pawn(1, 3, 'B', skin, False),
+             Pawn(1, 4, 'B', skin, False), Pawn(1, 5, 'B', skin, False), Pawn(1, 6, 'B', skin, False),
+             Pawn(1, 7, 'B', skin, False)],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
-            [Pawn(6, 0, 'W', 'F', skin), Pawn(6, 1, 'W', 'F', skin), Pawn(6, 2, 'W', 'F', skin),
-             Pawn(6, 3, 'W', 'F', skin),
-             Pawn(6, 4, 'W', 'F', skin), Pawn(6, 5, 'W', 'F', skin), Pawn(6, 6, 'W', 'F', skin),
-             Pawn(6, 7, 'W', 'F', skin)],
-            [Rook(7, 0, 'W', 'T', skin), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
-             self.kings[1],
-             Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', 'T', skin)]]
-        self.update_king_elimination_positions()  # priradi polu polia figurok ktore mozu vyhodit krala
+            [Pawn(6, 0, 'W', skin, False), Pawn(6, 1, 'W', skin, False), Pawn(6, 2, 'W', skin, False),
+             Pawn(6, 3, 'W', skin, False),
+             Pawn(6, 4, 'W', skin, False), Pawn(6, 5, 'W', skin, False), Pawn(6, 6, 'W', skin, False),
+             Pawn(6, 7, 'W', skin, False)],
+            [Rook(7, 0, 'W', skin, False), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
+             King(7, 4, 'W', skin, False),
+             Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', skin, False)]]
+
         self.create_figure_images()
 
     def create_figure_images(self):

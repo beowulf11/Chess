@@ -17,18 +17,18 @@ REMAINDERS:
  - Nezabudni Pawn promotion riesit v tejto classe lebo ak sa AI dostane
    do take pozicie tak tam zostane len Pawn stat navzdy
  - Plus v board.py treba priradit este obrazok novej figurky po Pawn promotion
- 
+
 SPEED IMPROVEMENT:
  - Kebyze je AI moc pomale tak sus kazde kolo kazdej figurke vygenerovat allowed_moves a possible_moves
    pretoze tieto atributy sa vyuzivaju casto a nech ich netreba pre kazdy pohyb samostatne generovat.
    Zamyslies sa treba este raz pretoze to neni az take lahke. By trebalo pre kazdy pohyb pozries lebo niektore
    figurky si musia updatnut allowed_moves pretoze sa im bud objavia nove alebo niektore sa zablokuju
- 
+
 '''
 
 
 class Chess:
-    def __init__(self, ai, canvas):
+    def __init__(self, ai, canvas, mode):
         self.player_map = [[0 for _ in range(8)] for _ in range(8)]
 
         self.canvas = canvas
@@ -94,6 +94,28 @@ class Chess:
 
         self.ai = ai
 
+        self.mode = mode
+
+        self.pawn_promotion_move = 0
+        self.pawn_to_promote = 0
+
+        self.moved_byt_two_figure = 0
+
+        self.end_game_message = 0
+
+        self.selected_figure = 0
+        self.selected_figure_moves = []
+
+    def reset(self):
+        self.saving_pos_w_king = []
+        self.saving_pos_b_king = []
+        self.old = []
+
+        self.king_w_elimation_positions = []
+        self.king_b_elimation_positions = []
+
+        self.pawn_en_pasant = 0
+
         self.pawn_promotion_move = 0
         self.pawn_to_promote = 0
 
@@ -112,10 +134,9 @@ class Chess:
     def testing(self):
         '''ONLY FOR TESTING'''
         skin = '1'
-        self.kings = [King(0, 4, 'B', skin, False), King(7, 4, 'W', skin, False)]
         self.player_map = [
             [Rook(0, 0, 'B', skin, False), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
-             self.kings[0],
+             King(0, 4, 'B', skin, False),
              Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, False)],
             [Pawn(1, 0, 'B', skin, False), Pawn(1, 1, 'B', skin, False), Pawn(1, 2, 'B', skin, False),
              Pawn(1, 3, 'B', skin, False),
@@ -123,14 +144,14 @@ class Chess:
              Pawn(1, 7, 'B', skin, False)],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],git
             [0, 0, 0, 0, 0, 0, 0, 0],
             [Pawn(6, 0, 'W', skin, False), Pawn(6, 1, 'W', skin, False), Pawn(6, 2, 'W', skin, False),
              Pawn(6, 3, 'W', skin, False),
              Pawn(6, 4, 'W', skin, False), Pawn(6, 5, 'W', skin, False), Pawn(6, 6, 'W', skin, False),
              Pawn(6, 7, 'W', skin, False)],
             [Rook(7, 0, 'W', skin, False), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
-             self.kings[1],
+             King(7, 4, 'W', skin, False),
              Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', skin, False)]]
 
     def get_king_elimination_positions(self, color):
@@ -155,76 +176,65 @@ class Chess:
                             temp.append(el)
         return temp
 
-    def minmax(self, depth, color):
-        if not depth:
-            return 0, self.evaluate()
-        if color:
-            moves = self.generate_moves(self.player_map, 'B')
-            best_move = 0
-            score = 9999
-            for move in moves:
-                self.move_figure(move)
-                minmax_s = self.minmax(depth - 1, abs(color - 1))
-                if score > minmax_s[1]:
-                    score = minmax_s[1]
-                    best_move = move
-                self.undo()
-            return best_move, score
-        else:
-            moves = self.generate_moves(self.player_map, 'W')
-            best_move = 0
-            score = -9999
-            for move in moves:
-                self.move_figure(move)
-                minmax_s = self.minmax(depth - 1, abs(color - 1))
-                if score < minmax_s[1]:
-                    score = minmax_s[1]
-                    best_move = move
-                self.undo()
-            return best_move, score
+    def find_king(self):
+        for line in self.player_map:
+            for figure in line:
+                if figure == King and figure.color == 'B':
+                    return True
+        return False
 
-    def alpha_beta(self, depth=2, color=1, alpha=None, beta=None):
+    def ai_move(self, depth=3):
+        print("Generating moves Alpha-Beta------")
+        t = time.time()
+        move, score = self.alpha_beta(self.player_map, depth, 1)
+        if not move:
+            move = choice(self.generate_moves(self.player_map, color='B'))
+        print(f'{move}, time = {round(time.time()-t, 2)}')
+        print('---------------------------------')
+        return move
+
+    def alpha_beta(self, board, depth=2, color=1, alpha=None, beta=None):
+        '''
+            Algoritmus na generovanie pohybov
+        :param board: Hracia plocha pre ktoru sa generuju pohyby
+        :param depth: Hlbka do kotrej ma algoritmus dojst
+        :param color: Farba pre ktore generuje funkcia pohyby v danom pohybe (funkcia je rekurizvna, farby sa striedaju)
+        :param alpha: Hodnota ktoru sa snazime maximalizovat
+        :param beta:  Hodnotu ktoru sa snazime minimalizovat
+        :return: Najlepsi pohyb pre ciernych (AI)
+        '''
         if not depth:
-            return 0, self.evaluate()
+            return 0, self.evaluate(board)
         if color:
-            moves = self.generate_moves(self.player_map, 'B')
+            moves = self.generate_moves(board, 'B')
             best_move = 0
             score = 9999
             for move in moves:
-                self.move_figure(move)
-                minmax_s = self.alpha_beta(depth - 1, abs(color - 1), alpha=score)
+                self.move_figure(move, board, True)
+                minmax_s = self.alpha_beta(board, depth - 1, abs(color - 1), alpha=score)
                 if beta is not None and minmax_s[1] < beta:
-                    self.undo()
+                    self.undo(board)
                     return best_move, minmax_s[1]
                 if score > minmax_s[1]:
                     score = minmax_s[1]
                     best_move = move
-                self.undo()
+                self.undo(board)
             return best_move, score
         else:
-            moves = self.generate_moves(self.player_map, 'W')
+            moves = self.generate_moves(board, 'W')
             score = -9999
             for move in moves:
-                self.move_figure(move)
-                minmax_s = self.alpha_beta(depth - 1, abs(color - 1), beta=score)
+                self.move_figure(move, board, True)
+                minmax_s = self.alpha_beta(board, depth - 1, abs(color - 1), beta=score)
                 if alpha is not None and minmax_s[1] > alpha:
-                    self.undo()
+                    self.undo(board)
                     return 0, minmax_s[1]
                 if score < minmax_s[1]:
                     score = minmax_s[1]
-                self.undo()
+                self.undo(board)
             return 0, score
 
-    def ai_move(self):
-        print("Generating moves Alpha-Beta------")
-        t = time.time()
-        a, s = self.alpha_beta(3, 1)
-        print(self.minmax(3, 1)[0])
-        print(a, round(time.time()-t, 2))
-        print('---------------------------------')
-        return a
-
-    def move_figure(self, move):
+    def move_figure(self, move, pole=None, minmax=False):
         """
             Pohne z figurkou, prepise pole a updatne figurku
         :param move: YXyx, YX-yove, xove suradnice figurky, yx-yove, xove suradnice novej pozicie
@@ -232,14 +242,13 @@ class Chess:
         :return: None
         """
 
-        pole = self.player_map
+        if pole is None:
+            pole = self.player_map
 
         elimineted_figure = 0
         elimineted_figure_type = 0
         y, x, new_pos_y, new_pos_x = move[0], move[1], move[2], move[3]
         figure = pole[y][x]
-
-        # print(move, pole[y][x])
 
         figure_stats = 0  # Iba pre Rook, King, Pawn pretoze treba zaznamenavat ci sa uz pohli lebo to ovplivnuje ich dalsie mozne pohybi
         rook_el = 0
@@ -281,9 +290,14 @@ class Chess:
         figure_stats = figure.get_moving_stats()
         figure.update_figure(move[2:])
 
+        self.pawn_promotion_move = 0
+
         if figure == Pawn and figure.y in (0, 7):
             self.pawn_promotion_move = (y, x, new_pos_y, new_pos_x)
             self.old.append((0, 1, elimineted_figure_type, elimineted_figure, 0))
+            if minmax:
+                self.pawn_to_promote = figure
+                self.pawn_promotion(Queen)
         else:
             self.old.append((move, figure_stats, elimineted_figure_type, elimineted_figure, rook_el))
 
@@ -344,9 +358,11 @@ class Chess:
                 if figure == Pawn and figure.moved_byt_two:
                     self.moved_byt_two_figure = figure
 
-    def evaluate(self):
+    def evaluate(self, pole=None):
+        if pole is None:
+            pole = self.player_map
         score = 0
-        for line in self.player_map:
+        for line in pole:
             for figure in line:
                 if figure:
                     if figure == 'B':
@@ -373,14 +389,18 @@ class Chess:
         if figure == King:
             return figure.score + self.king_table[poz]
 
-    def undo(self):
+    def undo(self, pole=None):
+
+        if pole is None:
+            pole = self.player_map
+
         figure_move, figure_stats, elimineted_figure, elimineted_figure_stats, more_elimination = self.old.pop()
         self.moved_byt_two_figure = None
 
         if figure_move:
-            self.player_map[figure_move[0]][figure_move[1]], self.player_map[figure_move[2]][figure_move[3]] = \
-                self.player_map[figure_move[2]][figure_move[3]], 0
-            figure = self.player_map[figure_move[0]][figure_move[1]]
+            pole[figure_move[0]][figure_move[1]], pole[figure_move[2]][figure_move[3]] = \
+                pole[figure_move[2]][figure_move[3]], 0
+            figure = pole[figure_move[0]][figure_move[1]]
             figure.y, figure.x = figure_move[0], figure_move[1]
 
         if figure_stats != 1:
@@ -391,7 +411,7 @@ class Chess:
 
         if elimineted_figure:
             figure = elimineted_figure(*elimineted_figure_stats)
-            self.player_map[figure.y][figure.x] = figure
+            pole[figure.y][figure.x] = figure
 
         if more_elimination:
             self.undo()
@@ -512,18 +532,20 @@ class Chess:
             if figure == Pawn and figure.color == 'B':
                 self.pawn_to_promote = figure
                 break
-
         return self.pawn_to_promote
 
-    def ascii(self):
+    def ascii(self, pole=None):
         '''
             Prints an ascii representation of the Board and the the indexes of player_map for debugging
         :return:
         '''
 
+        if pole is None:
+            pole = self.player_map
+
         print('+' + '-' * 35 + '+')
         i = 0
-        for line in self.player_map:
+        for line in pole:
             print(f'|{i}  ', end='')
             for figure in line:
                 if figure:

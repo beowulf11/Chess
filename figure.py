@@ -25,6 +25,9 @@ class Figure:
         if self.skin:
             self.image = tkinter.PhotoImage(file=f'Images/{self.name[1].lower()}{self.color}{self.skin}.png')
 
+    def get_poz(self):
+        return self.y, self.x
+
     def allowed_moves(self, pole):
         '''
             Funkcia pomocou fukncie possible_moves urcite vsetky mozne pohybi a potom prefiltruje a zisti ktore pohyby
@@ -72,12 +75,12 @@ class Figure:
         return []
 
     def king_checking_paths(self, pole):
+        king = None
         for line in pole:
             for figure in line:
                 if figure == self.color and figure == King:
                     king = figure
                     break
-
         paths = []
         current_figure, pole[self.y][self.x] = pole[self.y][self.x], 0
         for line in pole:
