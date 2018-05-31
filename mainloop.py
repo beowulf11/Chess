@@ -143,6 +143,9 @@ class Settings(tkinter.Frame):
         self.sel_back, self.sel_fig = int(self.settings_selected["background"]), int(self.settings_selected["figures"])
         self.sel_hint = self.colors.index(self.settings_selected['hint'])
         self.sel_dragging = self.settings_selected['dragging']
+        self.sel_ai = True
+        if self.settings_selected["ai"] == "False":
+            self.sel_ai = False
         self.canvas.itemconfig(self.hint_images[self.sel_hint], image=self.image[-3])
         self.canvas.itemconfig(self.sel_back + 2, image=self.image[int(self.sel_back) + 9])
         self.canvas.itemconfig(self.sel_fig + 6, image=self.image[int(self.sel_fig) + 13])

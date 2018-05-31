@@ -27,15 +27,10 @@ class Board(tkinter.Frame):
         self._drag_data = {'x': 0, 'y': 0, 'item': None}
 
         self.end_game_message = ''
-
+        self.width_policka = 78.5
+        self.posun_x = 35
+        self.posun_y = 35
         self.ai = True
-
-        with open('settings.txt', 'r') as file:
-            settings = json.load(file)
-            if settings["ai"] == "False":
-                self.ai = False
-
-        # self.game = chess.Chess(self.ai, self.canvas)
 
     def swap_frames(self, args=None):
         '''
@@ -61,6 +56,14 @@ class Board(tkinter.Frame):
             settings = json.load(file)
             board_img = settings['background']
             self.hint_color = settings["hint"]
+            if settings["ai"] == "False":
+                self.ai = False
+            else:
+                self.ai = True
+            if settings['dragging'] == 'True':
+                self.dragging_enabled = True
+            else:
+                self.dragging_enabled = False
 
         self.canvas.delete('all')  # vymaze obrazky z predoslej hry
         self.board_img = tkinter.PhotoImage(file=f'Images/game_board_0{board_img}.png')
@@ -71,12 +74,8 @@ class Board(tkinter.Frame):
         self.background_id = self.canvas.create_image(self.board_img.width() // 2, self.board_img.height() // 2,
                                                       image=self.board_img)
         self.end_game_message = 0
-        self.width_policka = 78.5
-        self.posun_x = 35
-        self.posun_y = 35
         self.choosing_menu = False
         self.choosing_fig = False
-        self.next_turn = True
         self.turn_color = 1  # 0-cierny, 1-biely
 
         self.game = chess.Chess(self.ai, self.canvas, mode)
@@ -130,27 +129,24 @@ class Board(tkinter.Frame):
         # reset the drag information
         if self.dragging_enabled and self.selected_figure:
             pozs = self.get_location_from_pixels(args.x, args.y)
-            self.selected_figure.x_p, self.selected_figure.y_p = self.canvas.coords(self._drag_data["item"])
-            movement = self.moving_logic(pozs)
-            if movement == 'kingSliding':
-                self.king_sliding(self.selected_figure, pozs)
-            elif movement == 'normal':
-                if not self.figure_move(self.selected_figure, [str(i) for i in pozs]):
-                    self.restore_location(self.selected_figure)
-            self.selected_figure = 0
             self.delete_possible_moves()
+            if not self.move_figure_human(self.selected_figure + pozs):
+                self.restore_location(self._drag_data["item"])
+            self.selected_figure = 0
             self._drag_data["item"] = None
             self._drag_data["x"] = 0
             self._drag_data["y"] = 0
 
     def on_motion(self, event):
         # compute how much the mouse has moved
-        if self._drag_data["item"] != 1 and self.dragging_enabled and self.selected_figure:
+        if isinstance(self._drag_data["item"], (Queen, Rook, Bishop, Knight, Pawn, King)) and self.dragging_enabled and self.selected_figure:
             delta_x = event.x - self._drag_data["x"]
             delta_y = event.y - self._drag_data["y"]
             # move the object the appropriate amount
-            self.canvas.move(self._drag_data["item"], delta_x, delta_y)
+            self.canvas.move(self._drag_data["item"].image_id, delta_x, delta_y)
             # record the new position
+            self._drag_data["item"].x_p = event.x
+            self._drag_data["item"].y_p = event.y
             self._drag_data["x"] = event.x
             self._drag_data["y"] = event.y
 
@@ -158,7 +154,6 @@ class Board(tkinter.Frame):
         '''
             Funkcia ktora sa zavola po kliknuti
         '''
-
         # Koniec hry
         if self.end_game_message:
             self.swap_frames()
@@ -174,7 +169,6 @@ class Board(tkinter.Frame):
                         self.game.pawn_promotion([Queen, Rook, Bishop, Knight][x])
                         self.pawn_promotion()
                         self.end_game()
-                self.next_turn = True
 
         # Vyber v menu (Continue, Save, Exit)
         elif self.choosing_menu:
@@ -187,25 +181,26 @@ class Board(tkinter.Frame):
             elif 150 <= args.x <= 550 and 410 <= args.y <= 490:
                 self.swap_frames()
 
-        # self.next_turn, Dovoli vybraniu dalsieho pohybu, zakaze ak je napr. program v animacii
-        elif self.next_turn:
+        else :
             pozs = self.get_location_from_pixels(args.x, args.y)
             # TODO: Spravit Klikanie aby fungovalo s chess.py
             if self.dragging_enabled:
                 # Namiesto klikania sa taha
                 if pozs:
                     if self.valid_click(pozs, self.turn_color):
-                        self._drag_data["item"] = self.canvas.find_closest(args.x, args.y)[0]
+                        poz = self.get_location_from_pixels(args.x, args.y)
+                        self._drag_data["item"] = self.game.player_map[poz[0]][poz[1]]
                         self._drag_data["x"] = args.x
                         self._drag_data["y"] = args.y
-                        if self._drag_data["item"] != 1:
-                            self.select_figure(pozs[0], pozs[1])
+                        if isinstance(self._drag_data["item"], (Queen, Rook, Bishop, Knight, Pawn, King)):
+                            self.select_figure(poz[0], poz[1])
                     elif self.valid_click(pozs, self.turn_color):
-                        self._drag_data["item"] = self.canvas.find_closest(args.x, args.y)[0]
+                        poz = self.get_location_from_pixels(args.x, args.y)
+                        self._drag_data["item"] = self.game.player_map[poz[0]][poz[1]]
                         self._drag_data["x"] = args.x
                         self._drag_data["y"] = args.y
-                        if self._drag_data["item"] != 1:
-                            self.select_figure(pozs[0], pozs[1])
+                        if isinstance(self._drag_data["item"], (Queen, Rook, Bishop, Knight, Pawn, King)):
+                            self.select_figure(poz[0], poz[1])
             else:
                 if pozs:
                     self.delete_possible_moves()
@@ -281,7 +276,7 @@ class Board(tkinter.Frame):
         self.selected_figure, self.possible_moves = 0, 0
         self.end_game()
 
-    def move_figure_to(self, fig=0, pix_x=0, pix_y=0):
+    def move_figure_to(self, fig=0, pix_x=0, pix_y=0, speed=1):
         '''
             Animuje pohyb a zaroven na konci animacie dovoli priebehu dalsieho kola
         '''
@@ -298,19 +293,17 @@ class Board(tkinter.Frame):
                     fig.y_p += 0.5
             self.canvas.coords(fig.image_id, fig.x_p, fig.y_p)
             self.canvas.update()
-            sleep(0.001)
+            sleep(0.001/speed)
             # self.canvas.after(1, self.move_figure_to, fig, pix_x, pix_y)
 
     def finished_game(self, looser):
         self.end_game_message = [self.canvas.create_rectangle(100, 300, 610, 400, fill='white'),
                                  self.canvas.create_text(350, 350, font=("Arial", 50),
                                                          text=f'{looser} prehrali')]
-        self.after_timer = self.canvas.after(7000, self.swap_frames)
 
     def restore_location(self, fig):
-        self.next_turn = False
         pix_y, pix_x = self.get_pixels_middle_from_location(fig.y, fig.x)
-        self.move_figure_to(fig, pix_x, pix_y)
+        self.move_figure_to(fig, pix_x, pix_y, 10)
 
     def saving_pos(self, attaking_pos):
         '''
@@ -405,6 +398,7 @@ class Board(tkinter.Frame):
         try:
             with open('game_save.txt', 'w') as file:
                 file.write(str(self.turn_color) + '\n')
+                file.write(self.game.mode + '\n')
                 for k in self.game.player_map:
                     for i in k:
                         if i:
@@ -465,6 +459,7 @@ class Board(tkinter.Frame):
             return conv_stats
 
         try:
+            print("Loading...")
             with open('settings.txt', 'r') as file:
                 json_file = json.load(file)
                 skin = json_file['figures']
@@ -477,6 +472,9 @@ class Board(tkinter.Frame):
                     for j in range(8):
                         self.game.player_map[i][j] = 0
                 self.turn_color = int(subor.readline())
+                if self.ai:
+                    self.turn_color = 1
+                self.game.mode = subor.readline()[:-1]
                 l = subor.readline()[:-1]
                 while l:
                     fig, *stats = l.split()
@@ -497,26 +495,24 @@ class Board(tkinter.Frame):
         '''
             Hra v mode nahodne figurky ktore su zrkadlovo otocene pre druheho hraca
         '''
+        print("Generating positions...")
         self.player_map = [[0 for _ in range(8)] for _ in range(8)]
         with open('settings.txt', 'r') as file:
             json_file = json.load(file)
             skin = json_file['figures']
-            if json_file['dragging'] == 'True':
-                self.dragging_enabled = True
-            else:
-                self.dragging_enabled = False
+
         figures = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
         x = randint(0, 7)
-        self.game.player_map[0][x] = King(0, x, 'B', skin, False)
-        self.game.player_map[7][abs(7 - x)] = King(7, abs(7 - x), 'W', skin, False)
+        self.game.player_map[0][x] = King(0, x, 'B', skin, True)
+        self.game.player_map[7][abs(7 - x)] = King(7, abs(7 - x), 'W', skin, True)
         for i in range(2):
             for j in range(8):
                 if self.game.player_map[i][j]:
                     continue
                 fig = figures[randint(0, len(figures) - 1)]
                 if fig == Pawn or fig == Rook:
-                    self.game.player_map[i][j] = fig(i, j, 'B', skin, False)
-                    self.game.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin, False)
+                    self.game.player_map[i][j] = fig(i, j, 'B', skin, True)
+                    self.game.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin, True)
                 else:
                     self.game.player_map[i][j] = fig(i, j, 'B', skin)
                     self.game.player_map[7 - i][abs(7 - j)] = fig(7 - i, abs(7 - j), 'W', skin)
@@ -526,14 +522,12 @@ class Board(tkinter.Frame):
         '''
             Hra v mode random normal kde sa figurky z klasickeho sachu nahodne rozlozia
         '''
+        print("Generating positions...")
         self.player_map = [[0 for _ in range(8)] for _ in range(8)]
         with open('settings.txt', 'r') as file:
             json_file = json.load(file)
             skin = json_file['figures']
-            if json_file['dragging'] == 'True':
-                self.dragging_enabled = True
-            else:
-                self.dragging_enabled = False
+
         figures_w = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
         figures_b = [Queen, Rook, Rook, Bishop, Bishop, Knight, Knight, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn, Pawn]
         x = randint(0, 7)
@@ -542,7 +536,6 @@ class Board(tkinter.Frame):
         self.game.player_map[7][x] = King(7, x, 'W', skin, False)
         for i in range(2):
             for j in range(8):
-                print(len(figures_w))
                 if self.game.player_map[i][j]:
                     continue
                 fig = figures_w.pop(randint(0, len(figures_w) - 1))
@@ -570,72 +563,50 @@ class Board(tkinter.Frame):
             figures = [Queen, Rook, Bishop, Knight, Pawn]
             x = randint(0, 7)
             y = randint(0, 1)
-            self.kings = [King(y, x, 'B', 'F', skin)]
-            self.player_map[y][x] = self.kings[0]
+            self.game.player_map[y][x] = King(y, x, 'B', skin, True)
             for i in range(2):
                 for j in range(8):
                     if i == y and j == x:
                         continue
                     fig = figures[randint(0, len(figures) - 1)]
-                    if fig == Pawn:
-                        self.player_map[i][j] = fig(i, j, 'B', 'T', skin)
-                    elif fig == Rook:
-                        self.player_map[i][j] = fig(i, j, 'B', 'F', skin)
+                    if fig == Pawn  or fig == Rook:
+                        self.game.player_map[i][j] = fig(i, j, 'B', skin, True)
                     else:
-                        self.player_map[i][j] = fig(i, j, 'B', skin)
+                        self.game.player_map[i][j] = fig(i, j, 'B', skin)
 
             x = randint(0, 7)
             y = randint(0, 1)
-            self.kings.append(King(7 - y, x, 'W', 'F', skin))
-            self.player_map[7 - y][x] = self.kings[1]
+            self.game.player_map[7 - y][x] = King(7 - y, x, 'W', skin, False)
             for i in range(2):
                 for j in range(8):
                     if i == y and j == x:
                         continue
                     fig = figures[randint(0, len(figures) - 1)]
-                    if fig == Pawn:
-                        self.player_map[7 - i][j] = fig(7 - i, j, 'W', 'T', skin)
-                    elif fig == Rook:
-                        self.player_map[7 - i][j] = fig(7 - i, j, 'W', 'F', skin)
+                    if fig == Pawn or fig == Rook:
+                        self.game.player_map[7 - i][j] = fig(7 - i, j, 'W', skin, True)
                     else:
-                        self.player_map[7 - i][j] = fig(7 - i, j, 'W', skin)
-            self.update_king_elimination_positions()
+                        self.game.player_map[7 - i][j] = fig(7 - i, j, 'W', skin)
 
-        self.player_map = [[0 for _ in range(8)] for _ in range(8)]
+        print("Generating positions...")
+        self.game.player_map = [[0 for _ in range(8)] for _ in range(8)]
         with open('settings.txt', 'r') as file:
             json_file = json.load(file)
             skin = json_file['figures']
-            if json_file['dragging'] == 'True':
-                self.dragging_enabled = True
-            else:
-                self.dragging_enabled = False
+
         random_pos()
-        while self.checking_for_game_end():
+        while not self.game.generate_moves(self.game.player_map, color='W') or not self.game.generate_moves(self.game.player_map, color='B'):
             random_pos()
-        if self.king_w_elimation_positions:
-            sav_pos = self.saving_pos(self.king_w_elimation_positions)
-            if sav_pos:
-                self.saving_pos_w_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-                    self.player_map, self.kings[1].poz)
-        if self.king_b_elimation_positions:
-            sav_pos = self.saving_pos(self.king_b_elimation_positions)
-            if sav_pos:
-                self.saving_pos_b_king = self.player_map[int(sav_pos[0][0])][int(sav_pos[0][1])].king_checking_path(
-                    self.player_map, self.kings[0].poz)
         self.create_figure_images()
 
     def normal_positions(self):
         '''
             Hra v mode klasicky sach
         '''
+        print("Preparing board...")
         self.player_map = [[0 for _ in range(8)] for _ in range(8)]
         with open('settings.txt', 'r') as file:
             json_file = json.load(file)
             skin = json_file['figures']
-            if json_file['dragging'] == 'True':
-                self.dragging_enabled = True
-            else:
-                self.dragging_enabled = False
 
         self.game.player_map = [
             [Rook(0, 0, 'B', skin, False), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),

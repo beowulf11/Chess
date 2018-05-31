@@ -103,25 +103,7 @@ class Chess:
 
         self.end_game_message = 0
 
-        self.selected_figure = 0
-        self.selected_figure_moves = []
-
-    def reset(self):
-        self.saving_pos_w_king = []
-        self.saving_pos_b_king = []
-        self.old = []
-
-        self.king_w_elimation_positions = []
-        self.king_b_elimation_positions = []
-
-        self.pawn_en_pasant = 0
-
-        self.pawn_promotion_move = 0
-        self.pawn_to_promote = 0
-
-        self.moved_byt_two_figure = 0
-
-        self.end_game_message = 0
+        self.debug = False
 
         self.selected_figure = 0
         self.selected_figure_moves = []
@@ -130,29 +112,6 @@ class Chess:
         self.selected_figure = self.player_map[pos[0]][pos[1]]
         self.selected_figure_moves = self.generate_moves(self.player_map, figure=self.selected_figure)
         return self.selected_figure_moves
-
-    def testing(self):
-        '''ONLY FOR TESTING'''
-        skin = '1'
-        self.player_map = [
-            [Rook(0, 0, 'B', skin, False), Knight(0, 1, 'B', skin), Bishop(0, 2, 'B', skin), Queen(0, 3, 'B', skin),
-             King(0, 4, 'B', skin, False),
-             Bishop(0, 5, 'B', skin), Knight(0, 6, 'B', skin), Rook(0, 7, 'B', skin, False)],
-            [Pawn(1, 0, 'B', skin, False), Pawn(1, 1, 'B', skin, False), Pawn(1, 2, 'B', skin, False),
-             Pawn(1, 3, 'B', skin, False),
-             Pawn(1, 4, 'B', skin, False), Pawn(1, 5, 'B', skin, False), Pawn(1, 6, 'B', skin, False),
-             Pawn(1, 7, 'B', skin, False)],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],git
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [Pawn(6, 0, 'W', skin, False), Pawn(6, 1, 'W', skin, False), Pawn(6, 2, 'W', skin, False),
-             Pawn(6, 3, 'W', skin, False),
-             Pawn(6, 4, 'W', skin, False), Pawn(6, 5, 'W', skin, False), Pawn(6, 6, 'W', skin, False),
-             Pawn(6, 7, 'W', skin, False)],
-            [Rook(7, 0, 'W', skin, False), Knight(7, 1, 'W', skin), Bishop(7, 2, 'W', skin), Queen(7, 3, 'W', skin),
-             King(7, 4, 'W', skin, False),
-             Bishop(7, 5, 'W', skin), Knight(7, 6, 'W', skin), Rook(7, 7, 'W', skin, False)]]
 
     def get_king_elimination_positions(self, color):
         '''
@@ -224,6 +183,8 @@ class Chess:
             moves = self.generate_moves(board, 'W')
             score = -9999
             for move in moves:
+                if move[:2] == (5, 0):
+                    self.debug = True
                 self.move_figure(move, board, True)
                 minmax_s = self.alpha_beta(board, depth - 1, abs(color - 1), beta=score)
                 if alpha is not None and minmax_s[1] > alpha:
@@ -232,6 +193,7 @@ class Chess:
                 if score < minmax_s[1]:
                     score = minmax_s[1]
                 self.undo(board)
+                self.debug = False
             return 0, score
 
     def move_figure(self, move, pole=None, minmax=False):
@@ -244,6 +206,9 @@ class Chess:
 
         if pole is None:
             pole = self.player_map
+
+        if type(self.player_map[move[0]][move[1]]) is int:
+            print("There seems to be and error the programmer didn't think of")
 
         elimineted_figure = 0
         elimineted_figure_type = 0
@@ -287,6 +252,7 @@ class Chess:
             elimineted_figure = elimineted_figure.get_stats()
 
         figure_movement.append((y, x, new_pos_y, new_pos_x))
+
         figure_stats = figure.get_moving_stats()
         figure.update_figure(move[2:])
 
@@ -373,6 +339,8 @@ class Chess:
         return score
 
     def figure_score(self, figure):
+        if self.mode != 'n':
+            return figure.score
         poz = figure.y * 8 + figure.x
         if figure == 'B':
             poz = -(figure.y * 8 + figure.x) - 1
@@ -394,16 +362,20 @@ class Chess:
         if pole is None:
             pole = self.player_map
 
+        if self.debug:
+            self.ascii()
+
         figure_move, figure_stats, elimineted_figure, elimineted_figure_stats, more_elimination = self.old.pop()
         self.moved_byt_two_figure = None
-
-        if figure_move:
+        bug_int = False
+        if figure_move and type(pole[figure_move[2]][figure_move[3]]) is not int:
+            bug_int = True
             pole[figure_move[0]][figure_move[1]], pole[figure_move[2]][figure_move[3]] = \
                 pole[figure_move[2]][figure_move[3]], 0
             figure = pole[figure_move[0]][figure_move[1]]
             figure.y, figure.x = figure_move[0], figure_move[1]
 
-        if figure_stats != 1:
+        if figure_stats != 1 and bug_int:
             if figure == Pawn:
                 figure.moved, figure.moved_byt_two = figure_stats
             else:
@@ -447,8 +419,6 @@ class Chess:
         if figure_pos is not None or figure is not None:
             if figure_pos is not None:
                 figure = pole[figure_pos[0]][figure_pos[1]]
-            # moves = self.filter_king_save_moves(
-            #     [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)])
             return [(figure.y, figure.x, *move) for move in figure.allowed_moves(self.player_map)]
 
         moves = []
@@ -558,6 +528,11 @@ class Chess:
         for i in range(8):
             print(f'0{i}', end='  ')
         print('|\n+' + '-' * 35 + '+')
+        h = ""
+        for line in self.player_map:
+            for figure in line:
+                h = h + str(figure)
+        print(hash(h))
 
 
 def choose_random_promotion():
