@@ -56,10 +56,7 @@ class Board(tkinter.Frame):
             settings = json.load(file)
             board_img = settings['background']
             self.hint_color = settings["hint"]
-            if settings["ai"] == "False":
-                self.ai = False
-            else:
-                self.ai = True
+            self.ai = settings["ai"]
             if settings['dragging'] == 'True':
                 self.dragging_enabled = True
             else:

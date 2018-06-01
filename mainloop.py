@@ -143,9 +143,7 @@ class Settings(tkinter.Frame):
         self.sel_back, self.sel_fig = int(self.settings_selected["background"]), int(self.settings_selected["figures"])
         self.sel_hint = self.colors.index(self.settings_selected['hint'])
         self.sel_dragging = self.settings_selected['dragging']
-        self.sel_ai = True
-        if self.settings_selected["ai"] == "False":
-            self.sel_ai = False
+        self.sel_ai = self.settings_selected['ai']
         self.canvas.itemconfig(self.hint_images[self.sel_hint], image=self.image[-3])
         self.canvas.itemconfig(self.sel_back + 2, image=self.image[int(self.sel_back) + 9])
         self.canvas.itemconfig(self.sel_fig + 6, image=self.image[int(self.sel_fig) + 13])
@@ -153,31 +151,43 @@ class Settings(tkinter.Frame):
             self.canvas.itemconfig(19, image=self.image[19])
         elif self.sel_dragging == 'False':
             self.canvas.itemconfig(19, image=self.image[18])
+        if self.sel_ai == True:
+            self.canvas.itemconfig(21, image=self.image[19])
+        else:
+            self.canvas.itemconfig(21, image=self.image[18])
 
     def save(self):
         self.settings_selected["background"] = self.sel_back
         self.settings_selected["figures"] = self.sel_fig
         self.settings_selected["hint"] = self.colors[self.sel_hint]
         self.settings_selected["dragging"] = self.sel_dragging
+        self.settings_selected["ai"] = self.sel_ai
         with open('settings.txt', 'w') as file:
             json.dump(self.settings_selected, file)
         self.controller.show_frames('Program')
 
     def kliknutie(self, args):
         '''
-                    Funkcia zisti ake tlacidlo bolo kliknute
-                '''
+            Funkcia zisti ake tlacidlo bolo kliknute
+        '''
         if 250 <= args.x <= 660 and 610 <= args.y <= 690:
             self.controller.show_frames('Program')
         elif 250 <= args.x <= 560 and 510 <= args.y <= 690:
             self.save()
-        if 528 <= args.x <= 572 and 28 <= args.y <= 72:
+        if 348 <= args.x <= 392 and 28 <= args.y <= 72:
             if self.sel_dragging == 'True':
                 self.canvas.itemconfig(19, image=self.image[18])
                 self.sel_dragging = 'False'
             else:
                 self.canvas.itemconfig(19, image=self.image[19])
                 self.sel_dragging = 'True'
+        if 688 <= args.x <= 732 and 28 <= args.y <= 72:
+            if self.sel_ai == True:
+                self.canvas.itemconfig(21, image=self.image[18])
+                self.sel_ai = False
+            else:
+                self.canvas.itemconfig(21, image=self.image[19])
+                self.sel_ai = True
         if 100 <= args.y <= 200:
             for i in range(4):
                 if 125 + (i + 1) * 50 + i * 100 <= args.x <= 225 + (i + 1) * 50 + i * 100:
@@ -222,8 +232,9 @@ class Settings(tkinter.Frame):
                       tkinter.PhotoImage(file='Images/figure_2S.png'),
                       tkinter.PhotoImage(file='Images/figure_3S.png'),
                       tkinter.PhotoImage(file='Images/button_dragging.png'),
-                      tkinter.PhotoImage(file='Images/dragging_false.png'),
-                      tkinter.PhotoImage(file='Images/dragging_true.png'),
+                      tkinter.PhotoImage(file='Images/false.png'),
+                      tkinter.PhotoImage(file='Images/true.png'),
+                      tkinter.PhotoImage(file='Images/button_ai.png'),
                       tkinter.PhotoImage(file='Images/hint_unselected.png'),
                       tkinter.PhotoImage(file='Images/hint_selected.png'),
                       tkinter.PhotoImage(file='Images/button_save.png'),
@@ -250,8 +261,10 @@ class Settings(tkinter.Frame):
         self.canvas.create_oval(515, 420, 535, 440, fill=self.colors[2]),
         self.hint_images.append(self.canvas.create_image(675, 430, image=self.image[-4]))
         self.canvas.create_oval(665, 420, 685, 440, fill=self.colors[3]),
-        self.canvas.create_image(450, 50, image=self.image[17])
-        self.canvas.create_image(550, 50, image=self.image[18])
+        self.canvas.create_image(279, 50, image=self.image[17])
+        self.canvas.create_image(370, 50, image=self.image[18])
+        self.canvas.create_image(620, 50, image=self.image[20])
+        self.canvas.create_image(710, 50, image=self.image[18])
         self.canvas.create_image(450, 550, image=self.image[-2])
         self.canvas.create_image(450, 650, image=self.image[-1])
 
